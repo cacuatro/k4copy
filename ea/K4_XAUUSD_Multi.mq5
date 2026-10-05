@@ -2,7 +2,6 @@
 #property version "3.17"
 #property strict
 #property link "https://copytrader-monitor.onrender.com/"
-#property icon "assets\\k4_xauusd.ico"
 #property description "K4 XAUUSD Multi | k4trader"
 #property description "Variante com multiplas ordens e grade (conta cent)."
 #property description "GRATUITO. Venda e revenda proibidas."
