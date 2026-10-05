@@ -21,8 +21,12 @@ Robô (Expert Advisor) que opera **ciclos de entradas** no **XAUUSD** na **recus
 
    Recusa no topo abre **VENDA**. Recusa no fundo abre **COMPRA**.
 
-3. **Ciclo**: cada topo/fundo relevante abre **um ciclo**.
-   - **Cada candle de recusa** naquele nível abre `InpOrdersPerRejection` ordem(ns), com padrão de **1**, até o limite de **`InpEntriesPerCycle` entradas** (padrão 10).
+3. **Ciclo**: cada topo/fundo relevante abre **um ciclo**, com até **`InpEntriesPerCycle` entradas** (padrão 10). A 1ª recusa no nível abre `InpOrdersPerRejection` ordem(ns), com padrão de 1. As próximas entradas dependem de `InpEntryMode`:
+   - `Uma por recusa no nível` (padrão): **cada novo candle de recusa** naquele nível abre mais ordem(ns).
+   - `Pirâmide`: uma nova ordem a cada `InpStepPrice` US$ que o preço andar **a favor** desde a última entrada (com pelo menos `InpMinSecondsBetween` segundos entre ordens).
+   - `Preço médio`: uma nova ordem a cada `InpStepPrice` US$ **contra** desde a última entrada.
+
+   Na pirâmide, o preço médio sobe junto com as entradas. Por isso o alvo "US$ a favor do preço médio" também se afasta. Para pirâmide, prefira o alvo em **% topo-fundo** (um preço fixo) ou o **trailing stop**.
    - O ciclo **termina quando a cesta dele fecha**, por alvo, trailing ou stop, **mesmo antes de completar as N entradas**. Aquele topo/fundo não é operado de novo.
    - **Depois que o ciclo atinge o limite de N entradas**, o **próximo ciclo começa no próximo topo/fundo relevante**, **mesmo que o ciclo anterior ainda tenha ordens abertas**. Cada ciclo tem a própria cesta, o próprio limite de entradas e o próprio alvo/trailing. Esse comportamento é o padrão (`InpNewCycleAfterLimit = true`). Com `false`, um ciclo novo pode começar antes, e o anterior para de abrir ordens.
    - Um ciclo também deixa de abrir ordens quando o trailing dele ativa. Isso libera o próximo ciclo.
@@ -94,7 +98,10 @@ Cada fim de ciclo aparece na aba **Diário**, com o motivo e o **resultado líqu
 | `InpMinSwingATR` | 1.5 | Tamanho mínimo do movimento (em ATR) |
 | `InpConfirmTF` | M5 | Timeframe do candle de recusa |
 | `InpEntriesPerCycle` | 10 | Limite de entradas do ciclo |
+| `InpEntryMode` | Uma por recusa | Como abrir as próximas entradas: por recusa, pirâmide (a favor) ou preço médio (contra) |
 | `InpOrdersPerRejection` | 1 | Ordens abertas em cada candle de recusa |
+| `InpStepPrice` | 1.50 | Pirâmide/preço médio: distância entre ordens (US$) |
+| `InpMinSecondsBetween` | 30 | Pirâmide/preço médio: intervalo mínimo entre ordens (segundos) |
 | `InpLot` | 0.01 | Lote de cada ordem |
 | `InpLotMultiplier` | 1.0 | Multiplicador de lote a cada entrada (acima de 1 = martingale) |
 | `InpNewCycleAfterLimit` | sim | Novo ciclo só depois que o atual completar as N entradas (ou fechar) |
@@ -120,7 +127,7 @@ Cada fim de ciclo aparece na aba **Diário**, com o motivo e o **resultado líqu
 | `InpMagic` | 440030 | Número mágico base. Cada ciclo usa base + 0..9; outra instância no mesmo símbolo deve usar base + 10 ou mais |
 
 **Mudanças em relação às versões anteriores**:
-- os modos de grade (`InpGridMode`, `InpStepPrice`) saíram: agora é uma ordem por recusa;
+- os modos a favor/contra voltaram como `InpEntryMode` (pirâmide e preço médio), junto com o novo modo "uma por recusa";
 - `InpInitialOrders` virou `InpOrdersPerRejection`;
 - `InpMaxCycles` agora conta os ciclos **iniciados**;
 - o alvo em % é medido **a partir do nível operado**;

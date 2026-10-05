@@ -4,8 +4,8 @@
 //|  Pensado para XAUUSD em conta cent (MetaTrader 5, conta hedge)   |
 //+------------------------------------------------------------------+
 #property copyright "k4copy"
-#property version   "3.00"
-#property description "Cada topo/fundo relevante (ex.: M30) abre um ciclo: 1 ordem por candle de recusa, até N."
+#property version   "3.10"
+#property description "Cada topo/fundo relevante (ex.: M30) abre um ciclo de até N entradas (por recusa, pirâmide ou preço médio)."
 #property description "Cada ciclo tem a sua cesta, alvo e trailing; termina quando a cesta fecha."
 #property description "O próximo ciclo começa no próximo topo/fundo relevante (por padrão, depois que o atual completar as entradas)."
 
@@ -15,6 +15,14 @@
 #define MAX_USED   50
 #define MAX_SLOTS  10    // ciclos simultâneos possíveis (cada um usa o mágico base + índice)
 #define EXIT_COUNT 7
+
+//--- como o ciclo abre as entradas depois da primeira
+enum ENUM_ENTRY_MODE
+  {
+   ENTRY_REJECTION = 0, // Uma por recusa no nível
+   ENTRY_PYRAMID   = 1, // Pirâmide: a cada X US$ a favor do preço
+   ENTRY_AVERAGE   = 2  // Preço médio: a cada X US$ contra o preço
+  };
 
 //--- tipo de alvo (TP) da cesta
 enum ENUM_TP_MODE
@@ -72,7 +80,10 @@ input double          InpMaxBreakATR  = 0.50;        // Rompimento máximo aceit
 //=== Ciclos ========================================================
 input group "=== Ciclos ==="
 input int              InpEntriesPerCycle    = 10;            // Entradas por ciclo (limite do ciclo)
+input ENUM_ENTRY_MODE  InpEntryMode          = ENTRY_REJECTION; // Como abrir as próximas entradas do ciclo
 input int              InpOrdersPerRejection = 1;             // Ordens abertas em cada candle de recusa
+input double           InpStepPrice          = 1.50;          // Pirâmide/preço médio: distância entre ordens (US$)
+input int              InpMinSecondsBetween  = 30;            // Pirâmide/preço médio: intervalo mínimo entre ordens (seg)
 input double           InpLot                = 0.01;          // Lote de cada ordem
 input double           InpLotMultiplier      = 1.0;           // Multiplicador de lote por entrada (1.0 = fixo)
 input bool             InpNewCycleAfterLimit = true;          // Novo ciclo só depois que o atual completar as N entradas (ou fechar)
@@ -184,6 +195,7 @@ string   g_status           = "Aguardando recusa de topo/fundo relevante";
 int OnInit()
   {
    if(InpEntriesPerCycle < 1 || InpOrdersPerRejection < 1 || InpLot <= 0.0 ||
+      (InpEntryMode != ENTRY_REJECTION && InpStepPrice <= 0.0) ||
       InpLotMultiplier <= 0.0 || InpSwingStrength < 1 || InpLeftBars < 1 ||
       InpLookbackBars <= InpSwingStrength || InpMaxOpenCycles < 1)
      {
@@ -336,7 +348,8 @@ void CheckSignals()
          g_cy[s].acceptEntries = false;
          continue;
         }
-      if(IsRejection(g_cy[s].dir < 0, g_cy[s].level, g_cy[s].atr) && OpenEntries(s) > 0)
+      if(InpEntryMode == ENTRY_REJECTION &&
+         IsRejection(g_cy[s].dir < 0, g_cy[s].level, g_cy[s].atr) && OpenEntries(s) > 0)
          g_status = StringFormat("Ciclo #%d: nova recusa em %.2f, entrada %d/%d", g_cy[s].seq, g_cy[s].level,
                                  g_cy[s].entries, InpEntriesPerCycle);
      }
@@ -666,8 +679,66 @@ void ManageCycle(int s)
      }
 
    ManageExit(s, n);
-   if(!g_cy[s].closing)
-      SyncServerStops(s, n);
+   if(g_cy[s].closing)
+      return;
+   if(TryGridEntry(s))
+      n = CountPositions(s);
+   SyncServerStops(s, n);
+  }
+
+//+------------------------------------------------------------------+
+//| Pirâmide / preço médio: nova ordem quando o preço anda X US$ a    |
+//| favor (pirâmide) ou contra (preço médio) desde a última entrada.  |
+//+------------------------------------------------------------------+
+bool TryGridEntry(int s)
+  {
+   if(InpEntryMode == ENTRY_REJECTION || !g_cy[s].acceptEntries || g_cy[s].trailActive ||
+      g_haltDay || g_haltAll || !CanTrade())
+      return(false);
+   if(g_cy[s].entries >= InpEntriesPerCycle)
+     {
+      g_cy[s].acceptEntries = false;
+      return(false);
+     }
+
+   double   lastPrice = 0.0;
+   datetime lastTime  = 0;
+   if(!LastEntry(s, lastPrice, lastTime) || TimeCurrent() - lastTime < InpMinSecondsBetween)
+      return(false);
+
+   int    dir   = g_cy[s].dir;
+   double price = (dir > 0) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double moved = dir * (price - lastPrice);          // > 0 = a favor, < 0 = contra
+   bool   add   = (InpEntryMode == ENTRY_PYRAMID) ? (moved >= InpStepPrice) : (-moved >= InpStepPrice);
+   if(!add || !OpenOrder(s))
+      return(false);
+
+   if(g_cy[s].entries >= InpEntriesPerCycle)
+      g_cy[s].acceptEntries = false;
+   g_status = StringFormat("Ciclo #%d: %s, entrada %d/%d", g_cy[s].seq,
+                           InpEntryMode == ENTRY_PYRAMID ? "pirâmide" : "preço médio",
+                           g_cy[s].entries, InpEntriesPerCycle);
+   SaveState();
+   return(true);
+  }
+
+// preço e hora da entrada mais recente do ciclo
+bool LastEntry(int s, double &price, datetime &time)
+  {
+   long best = -1;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      if(!InSlot(PositionGetTicket(i), s))
+         continue;
+      long t = PositionGetInteger(POSITION_TIME_MSC);
+      if(t > best)
+        {
+         best  = t;
+         price = PositionGetDouble(POSITION_PRICE_OPEN);
+         time  = (datetime)PositionGetInteger(POSITION_TIME);
+        }
+     }
+   return(best >= 0);
   }
 
 //+------------------------------------------------------------------+
@@ -1739,6 +1810,13 @@ void Render()
    else
       target = StringFormat("US$ %.2f a favor do preço médio", InpTPPriceDist);
 
+   string entry;
+   if(InpEntryMode == ENTRY_REJECTION)
+      entry = StringFormat("%d por recusa no nível", InpOrdersPerRejection);
+   else
+      entry = StringFormat("%s a cada US$ %.2f", InpEntryMode == ENTRY_PYRAMID ? "pirâmide (a favor)" : "preço médio (contra)",
+                           InpStepPrice);
+
    string trail;
    if(InpTrailMode == TRAIL_OFF)
       trail = "desligado";
@@ -1756,7 +1834,7 @@ void Render()
 
    Comment(StringFormat("K4 Rejection Cycles | %s\n"
                         "Topo relevante: %s | Fundo relevante: %s | ATR: %.2f\n"
-                        "Ciclos iniciados: %s | abertos: %d/%d\n"
+                        "Ciclos iniciados: %s | abertos: %d/%d | entradas: %s\n"
                         "%s"
                         "Alvo: %s\n"
                         "Trailing: %s\n"
@@ -1767,7 +1845,7 @@ void Render()
                         _Symbol,
                         g_hasTop ? DoubleToString(g_topLevel, _Digits) + (topUsed ? " (já operado)" : "") : "-",
                         g_hasBot ? DoubleToString(g_botLevel, _Digits) + (botUsed ? " (já operado)" : "") : "-",
-                        g_atr, limit, OpenCycles(), g_maxOpen,
+                        g_atr, limit, OpenCycles(), g_maxOpen, entry,
                         cycles, target, trail,
                         NormalizeLot(InpLot), perOrder, currency,
                         AccountInfoDouble(ACCOUNT_EQUITY) - g_dayStartEquity, currency,
