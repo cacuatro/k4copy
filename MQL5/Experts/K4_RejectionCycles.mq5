@@ -701,6 +701,11 @@ bool TryGridEntry(int s)
       return(false);
      }
 
+   // a ordem anterior ainda pode não aparecer na lista de posições: espera antes de somar outra
+   if(TimeCurrent() - g_cy[s].lastEntryTime < MathMax(InpMinSecondsBetween, 1) ||
+      CountPositions(s) < g_cy[s].prevPositions)
+      return(false);
+
    double   lastPrice = 0.0;
    datetime lastTime  = 0;
    if(!LastEntry(s, lastPrice, lastTime) || TimeCurrent() - lastTime < InpMinSecondsBetween)
