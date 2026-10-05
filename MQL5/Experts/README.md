@@ -4,7 +4,13 @@ Robô (Expert Advisor) que opera ciclos de entradas no **XAUUSD** na **recusa de
 
 ## Como funciona
 
-1. **Topo/fundo relevante** (padrão M30): um candle cuja máxima (ou mínima) é a mais extrema em ±24 candles, que teve um movimento de pelo menos 1,5×ATR e ainda não foi superado. O robô usa o topo e o fundo mais recentes que atendem a isso. Eles aparecem no gráfico como linhas tracejadas.
+1. **Topo/fundo relevante** (padrão M30): o robô usa o topo e o fundo **mais recentes** que atendem a todas estas condições:
+   - é a máxima (ou mínima) mais extrema dos **12 candles anteriores**;
+   - tem pelo menos **3 candles depois** confirmando;
+   - **nenhum candle depois dele o superou**;
+   - o movimento até ele, ou a partir dele, tem pelo menos 1,5×ATR.
+
+   Assim, em tendência de alta o fundo acompanha os **fundos mais altos** dos recuos, e em tendência de baixa o topo acompanha os **topos mais baixos**. Eles aparecem no gráfico como linhas tracejadas.
 2. **Recusa** (padrão M5): um candle fechado que toca a zona do nível, não rompe mais que 0,5×ATR, fecha de volta do lado certo, tem cor a favor e pavio de pelo menos 40% do tamanho.
    - Recusa no topo → **VENDA**. Recusa no fundo → **COMPRA**.
 3. **Ciclo de entradas**: com a recusa, o ciclo começa e abre as ordens iniciais. As próximas ordens entram conforme o modo escolhido:
@@ -37,7 +43,8 @@ Robô (Expert Advisor) que opera ciclos de entradas no **XAUUSD** na **recusa de
 | Parâmetro | Padrão | Significado |
 |---|---|---|
 | `InpSwingTF` | M30 | Timeframe dos topos/fundos |
-| `InpRelevanceBars` | 24 | O topo/fundo precisa ser o extremo em ±N candles |
+| `InpSwingStrength` | 3 | Candles depois do topo/fundo para confirmar |
+| `InpLeftBars` | 12 | O topo/fundo precisa ser o extremo dos N candles anteriores (menor = atualiza mais rápido) |
 | `InpMinSwingATR` | 1.5 | Tamanho mínimo do movimento (em ATR) |
 | `InpConfirmTF` | M5 | Timeframe do candle de recusa |
 | `InpEntriesPerCycle` | 10 | Entradas por ciclo |

@@ -4,7 +4,7 @@
 //|  Pensado para XAUUSD em conta cent (MetaTrader 5, conta hedge)   |
 //+------------------------------------------------------------------+
 #property copyright "k4copy"
-#property version   "2.10"
+#property version   "2.20"
 #property description "Detecta topos/fundos relevantes (ex.: M30) e entra na recusa do nível."
 #property description "Cada ciclo faz até N entradas; a cesta fecha no alvo (X em dinheiro ou % topo-fundo)."
 #property description "Completado o ciclo, aguarda o próximo topo/fundo relevante."
@@ -40,8 +40,8 @@ enum ENUM_CYCLE_LIMIT
 //=== Topo/Fundo relevante ==========================================
 input group "=== Topo/Fundo relevante ==="
 input ENUM_TIMEFRAMES InpSwingTF       = PERIOD_M30; // Timeframe dos topos/fundos
-input int             InpSwingStrength = 3;          // Candles mínimos à direita do topo/fundo
-input int             InpRelevanceBars = 24;         // Deve ser o extremo em +/- N candles
+input int             InpSwingStrength = 3;          // Candles à direita para confirmar o topo/fundo
+input int             InpLeftBars      = 12;         // Deve ser o extremo dos N candles anteriores
 input int             InpLookbackBars  = 200;        // Candles analisados para trás
 input int             InpATRPeriod     = 14;         // Período do ATR (TF dos topos/fundos)
 input double          InpMinSwingATR   = 1.5;        // Amplitude mínima do movimento (x ATR)
@@ -143,7 +143,8 @@ string   g_status           = "Aguardando recusa de topo/fundo relevante";
 int OnInit()
   {
    if(InpEntriesPerCycle < 1 || InpInitialOrders < 1 || InpLot <= 0.0 ||
-      InpLotMultiplier <= 0.0 || InpSwingStrength < 1 || InpLookbackBars <= InpSwingStrength)
+      InpLotMultiplier <= 0.0 || InpSwingStrength < 1 || InpLeftBars < 1 ||
+      InpLookbackBars <= InpSwingStrength)
      {
       Print("Parâmetros inválidos: verifique entradas, ordens iniciais, lote e candles.");
       return(INIT_PARAMETERS_INCORRECT);
@@ -625,8 +626,7 @@ void RefreshSwings()
    if(atr <= 0.0)
       return;
 
-   int relevance = MathMax(InpRelevanceBars, InpSwingStrength);
-   int need      = InpLookbackBars + relevance + 1;
+   int need = InpLookbackBars + InpLeftBars + 1;
 
    MqlRates r[];
    ArraySetAsSeries(r, true);
@@ -634,52 +634,75 @@ void RefreshSwings()
       return; // histórico ainda carregando, tenta no próximo tick
 
    g_atr    = atr;
-   g_hasTop = FindSwing(r, true,  relevance, atr, g_topLevel, g_topTime, g_topAmp);
-   g_hasBot = FindSwing(r, false, relevance, atr, g_botLevel, g_botTime, g_botAmp);
+   g_hasTop = FindSwing(r, true,  atr, g_topLevel, g_topTime, g_topAmp);
+   g_hasBot = FindSwing(r, false, atr, g_botLevel, g_botTime, g_botAmp);
    g_swingBar = bar;
   }
 
 //+------------------------------------------------------------------+
-//| Topo/fundo relevante: extremo em +/- N candles fechados, com      |
-//| amplitude mínima em ATR e não superado depois. Pega o mais recente|
+//| Topo/fundo relevante (o mais recente) em candles fechados:        |
+//|  - é o extremo dos N candles anteriores a ele;                    |
+//|  - nenhum candle depois dele o superou (até o candle 1);          |
+//|  - tem pelo menos X candles depois dele (confirmação);            |
+//|  - o movimento até ele ou a partir dele tem pelo menos Y x ATR.   |
+//| Em tendência, isso pega os fundos/topos que vão se formando nos   |
+//| recuos (fundos mais altos na alta, topos mais baixos na baixa).   |
 //+------------------------------------------------------------------+
-bool FindSwing(const MqlRates &r[], bool isTop, int relevance, double atr,
+bool FindSwing(const MqlRates &r[], bool isTop, double atr,
                double &level, datetime &swingTime, double &amplitude)
   {
    level     = 0.0;
    swingTime = 0;
    amplitude = 0.0;
 
-   for(int i = InpSwingStrength + 1; i <= InpLookbackBars; i++)
-     {
-      double v    = isTop ? r[i].high : r[i].low;
-      double opp  = v;
-      int    from = MathMax(1, i - relevance); // candle 0 (em formação) fica de fora
-      int    to   = i + relevance;
-      bool   ok   = true;
+   // extremos dos candles mais novos que i (do candle 1 até i-1)
+   double newerExt = isTop ? -DBL_MAX : DBL_MAX; // maior máxima / menor mínima depois de i
+   double newerOpp = isTop ?  DBL_MAX : -DBL_MAX; // até onde o preço se afastou depois de i
 
-      for(int k = from; k <= to && ok; k++)
+   for(int i = 1; i <= InpLookbackBars; i++)
+     {
+      double v  = isTop ? r[i].high : r[i].low;
+      // confirmado e ainda não superado (um candle mais novo igual também invalida)
+      bool   ok = (i > InpSwingStrength) && (isTop ? (v > newerExt) : (v < newerExt));
+
+      // extremo dos candles anteriores
+      double leftOpp = v;
+      for(int k = i + 1; k <= i + InpLeftBars && ok; k++)
         {
-         if(k == i)
-            continue;
          if(isTop)
            {
-            if(r[k].high >= v) ok = false;
-            opp = MathMin(opp, r[k].low);
+            if(r[k].high > v) ok = false;
+            leftOpp = MathMin(leftOpp, r[k].low);
            }
          else
            {
-            if(r[k].low <= v) ok = false;
-            opp = MathMax(opp, r[k].high);
+            if(r[k].low < v) ok = false;
+            leftOpp = MathMax(leftOpp, r[k].high);
            }
         }
-      if(!ok || MathAbs(v - opp) < InpMinSwingATR * atr)
-         continue;
 
-      level     = v;
-      swingTime = r[i].time;
-      amplitude = MathAbs(v - opp);
-      return(true);
+      if(ok)
+        {
+         double amp = MathMax(MathAbs(v - leftOpp), MathAbs(newerOpp - v));
+         if(amp >= InpMinSwingATR * atr)
+           {
+            level     = v;
+            swingTime = r[i].time;
+            amplitude = amp;
+            return(true);
+           }
+        }
+
+      if(isTop)
+        {
+         newerExt = MathMax(newerExt, r[i].high);
+         newerOpp = MathMin(newerOpp, r[i].low);
+        }
+      else
+        {
+         newerExt = MathMin(newerExt, r[i].low);
+         newerOpp = MathMax(newerOpp, r[i].high);
+        }
      }
    return(false);
   }
