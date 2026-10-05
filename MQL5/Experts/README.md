@@ -1,6 +1,6 @@
 # K4 Rejection Cycles (XAUUSD / MetaTrader 5)
 
-Robô (Expert Advisor) que opera ciclos de entradas no **XAUUSD** na **recusa de topos/fundos relevantes**, pensado para **conta cent**.
+Robô (Expert Advisor) que opera **ciclos de entradas** no **XAUUSD** na **recusa de topos/fundos relevantes**, pensado para **conta cent**. A conta precisa ser **hedge**.
 
 ## Como funciona
 
@@ -10,24 +10,72 @@ Robô (Expert Advisor) que opera ciclos de entradas no **XAUUSD** na **recusa de
    - **nenhum candle depois dele o superou**;
    - o movimento até ele, ou a partir dele, tem pelo menos 1,5×ATR.
 
-   Assim, em tendência de alta o fundo acompanha os **fundos mais altos** dos recuos, e em tendência de baixa o topo acompanha os **topos mais baixos**. Eles aparecem no gráfico como linhas tracejadas.
-2. **Recusa** (padrão M5): um candle fechado que toca a zona do nível, não rompe mais que 0,5×ATR, fecha de volta do lado certo, tem cor a favor e pavio de pelo menos 40% do tamanho.
-   - Recusa no topo → **VENDA**. Recusa no fundo → **COMPRA**.
-3. **Ciclo de entradas**: com a recusa, o ciclo começa e abre as ordens iniciais. As próximas ordens entram conforme o modo escolhido:
-   - `Contra o preço`: a cada US$ 1,50 contra (preço médio).
-   - `A favor do preço`: a cada US$ 1,50 a favor (pirâmide).
-   - `Por tempo`: a cada X segundos, enquanto o preço segue do lado certo do nível.
-4. **Saída rápida**: a cesta inteira fecha no alvo escolhido em `InpTPMode`:
-   - `Valor em dinheiro (X)`: quando o lucro somado chega a `InpBasketTPMoney` (+ `InpTPPerExtraOrder` por ordem extra).
-   - `% da distância topo-fundo`: o alvo é um preço. A partir da 1ª ordem da cesta, o preço precisa andar `InpTPRangePct`% da distância entre o topo e o fundo relevantes. Exemplo: topo 2.650 e fundo 2.630 (distância US$ 20), alvo 30% → US$ 6. Vendeu em 2.648, então o alvo é 2.642. No preço médio, as ordens extras entram mais acima, então todas lucram mais no mesmo alvo. O alvo aparece como linha verde pontilhada.
-   - `O que vier primeiro`: usa os dois alvos.
+   Em tendência de alta, o fundo acompanha os **fundos mais altos** dos recuos. Em tendência de baixa, o topo acompanha os **topos mais baixos**. Os dois aparecem como linhas tracejadas (topo em vermelho, fundo em azul).
 
-   A cesta também pode sair:
-   - por tempo, no zero a zero, depois de X minutos;
-   - pelo stop técnico, se o preço passar 1×ATR além do nível;
-   - pelo stop em dinheiro da cesta.
-5. **Ciclos**: cada ciclo tem até **10 entradas**. Se a cesta fecha no lucro antes das 10 entradas, o robô pode entrar de novo no mesmo nível com uma nova recusa. Depois de completar as 10 entradas, ou se o nível for rompido, aquele topo/fundo fica marcado como usado. O próximo ciclo só começa no **próximo topo/fundo relevante**.
-6. **Limite de ciclos**: `InpMaxCycles` faz o robô parar depois de X ciclos concluídos. A contagem pode ser **por dia** (zera todo dia) ou **total** (zera com `InpResetState = true`). Um ciclo em andamento sempre termina normalmente.
+2. **Recusa** (padrão M5): é um candle fechado que atende a todas estas condições:
+   - toca a zona do nível;
+   - não rompe o nível mais que 0,5×ATR;
+   - fecha de volta do lado certo;
+   - tem cor a favor;
+   - tem pavio de pelo menos 40% do tamanho do candle.
+
+   Recusa no topo abre **VENDA**. Recusa no fundo abre **COMPRA**.
+
+3. **Ciclo**: cada topo/fundo relevante abre **um ciclo**.
+   - **Cada candle de recusa** naquele nível abre `InpOrdersPerRejection` ordem(ns), com padrão de **1**, até o limite de **`InpEntriesPerCycle` entradas** (padrão 10).
+   - O ciclo **termina quando a cesta dele fecha**, por alvo, trailing ou stop, **mesmo antes de completar as N entradas**. Aquele topo/fundo não é operado de novo.
+   - **Depois que o ciclo atinge o limite de N entradas**, o **próximo ciclo começa no próximo topo/fundo relevante**, **mesmo que o ciclo anterior ainda tenha ordens abertas**. Cada ciclo tem a própria cesta, o próprio limite de entradas e o próprio alvo/trailing. Esse comportamento é o padrão (`InpNewCycleAfterLimit = true`). Com `false`, um ciclo novo pode começar antes, e o anterior para de abrir ordens.
+   - Um ciclo também deixa de abrir ordens quando o trailing dele ativa. Isso libera o próximo ciclo.
+   - Um "novo topo" criado só por um pavio que passou um pouco do nível de um ciclo aberto é tratado como **o mesmo nível**.
+   - Os ciclos são numerados (#1, #2, ...). O número aparece no painel, no Diário, nas linhas do gráfico e no comentário das ordens.
+   - `InpMaxOpenCycles` limita quantos ciclos podem ficar abertos ao mesmo tempo (padrão 3, máximo 10).
+   - `InpMaxCycles` faz o robô parar depois de X **ciclos iniciados**. A contagem pode ser **por dia** (zera todo dia) ou **total** (zera com `InpResetState = true`). Os ciclos já abertos terminam normalmente.
+
+4. **Saída** (para cada ciclo): a cesta fecha inteira no alvo escolhido em `InpTPMode`:
+   - `Valor em dinheiro (X)`: quando o lucro **líquido** somado (já descontando comissão e swap) chega a `InpBasketTPMoney` (+ `InpTPPerExtraOrder` por ordem extra).
+   - `% da distância topo-fundo`: o alvo é um preço. A partir do nível operado, o preço precisa andar `InpTPRangePct`% da distância entre o topo e o fundo relevantes, ou seja, as linhas tracejadas no início do ciclo. Exemplo: topo 4.402 e fundo 4.304 (distância US$ 98). Com 30%, o alvo de venda fica em 4.372,60. Com 200%, fica em 4.206.
+   - `Dinheiro ou % topo-fundo`: o que vier primeiro.
+   - `US$ a favor do preço médio` (**padrão**): o alvo é o preço médio da cesta mais `InpTPPriceDist` (ex.: US$ 3). Não depende da moeda da conta nem do lote.
+
+   O alvo de cada ciclo aparece como **linha verde pontilhada**. Com `InpServerTP = true`:
+   - o alvo vai como **TP real** em todas as ordens do ciclo, nunca antes do zero a zero líquido;
+   - o **stop técnico** vai como **SL real**;
+   - assim a cesta sai no preço exato mesmo com o MT5 fechado.
+
+5. **Trailing stop da cesta** (`InpTrailMode`):
+   - `Ao atingir o alvo, deixa correr`: em vez de fechar no alvo, o robô passa a seguir o preço.
+   - `A partir de X US$ a favor do preço médio`: o trailing liga quando o preço anda `InpTrailStartPrice` a favor do zero a zero, ou ao atingir o alvo, o que vier primeiro.
+
+   Com o trailing ligado, o alvo **não fecha** a cesta: ele só ativa o trailing, e não vai TP real para a corretora. Depois que o trailing liga:
+   - o SL real das ordens passa a acompanhar o trailing;
+   - a cesta sai quando o preço devolver `InpTrailDistPrice` do melhor ponto;
+   - o stop **garante `InpTrailLockPct`% (padrão 50%) do lucro do momento da ativação** e nunca fica pior que o zero a zero líquido;
+   - o stop aparece como linha laranja, e o ciclo não abre novas ordens.
+   - Recomendação: use um recuo (`InpTrailDistPrice`) menor que a distância do alvo.
+
+6. **Outras saídas**:
+   - **Stop técnico:** o preço passa 1×ATR além do nível. A cesta fecha e o ciclo termina.
+   - **Stop em dinheiro da cesta:** `InpBasketSLMoney`.
+   - **Saída por tempo:** `InpTimeExitMinutes`, **desligada por padrão**.
+   - **Proteções da conta:** meta diária, perda diária e equity alvo. Elas fecham todos os ciclos.
+
+## Painel e Diário
+
+No gráfico, cada linha tem nome. Passe o mouse para ver o nome, ou ative "Mostrar descrições dos objetos" nas propriedades do gráfico. As linhas são:
+- topo e fundo relevantes, tracejados. Ficam **cinza** quando o nível já foi operado;
+- nível do ciclo, em dourado;
+- alvo, verde pontilhado;
+- trailing, laranja;
+- stop técnico, vermelho pontilhado.
+
+O painel mostra cada ciclo aberto com:
+- direção, nível e entradas feitas/limite;
+- posições, preço médio, lucro líquido e alvo;
+- trailing, quando estiver ativo.
+
+O painel também mostra quantas cestas saíram por cada motivo e **quanto vale US$ 1 de movimento do ouro na sua conta**.
+
+Cada fim de ciclo aparece na aba **Diário**, com o motivo e o **resultado líquido** do ciclo. O relatório do Testador mostra uma linha por ordem; o resultado da cesta inteira está no Diário.
 
 ## Instalação
 
@@ -35,8 +83,6 @@ Robô (Expert Advisor) que opera ciclos de entradas no **XAUUSD** na **recusa de
 2. Copie `K4_RejectionCycles.mq5` para `MQL5/Experts/`.
 3. Abra no MetaEditor e compile (F7).
 4. Arraste o robô para um gráfico do XAUUSD (qualquer timeframe) e ative o **Algo Trading**.
-
-> A conta deve ser **hedge**. Em conta netting, as ordens se juntam numa posição só.
 
 ## Parâmetros principais
 
@@ -47,29 +93,48 @@ Robô (Expert Advisor) que opera ciclos de entradas no **XAUUSD** na **recusa de
 | `InpLeftBars` | 12 | O topo/fundo precisa ser o extremo dos N candles anteriores (menor = atualiza mais rápido) |
 | `InpMinSwingATR` | 1.5 | Tamanho mínimo do movimento (em ATR) |
 | `InpConfirmTF` | M5 | Timeframe do candle de recusa |
-| `InpEntriesPerCycle` | 10 | Entradas por ciclo |
+| `InpEntriesPerCycle` | 10 | Limite de entradas do ciclo |
+| `InpOrdersPerRejection` | 1 | Ordens abertas em cada candle de recusa |
 | `InpLot` | 0.01 | Lote de cada ordem |
-| `InpGridMode` | Contra | Como adicionar as próximas ordens |
-| `InpStepPrice` | 1.50 | Distância entre ordens (US$ no preço do ouro) |
-| `InpTPMode` | Dinheiro | Tipo de alvo: dinheiro, % topo-fundo, ou o que vier primeiro |
-| `InpTPRangePct` | 30 | Alvo em % da distância entre topo e fundo relevantes |
-| `InpBasketTPMoney` | 100 | **Lucro X para sair** (na moeda da conta; em cent, 100 = US$ 1) |
-| `InpTPPerExtraOrder` | 0 | Alvo em dinheiro maior a cada ordem extra (preço médio) |
-| `InpInvalidateATR` | 1.0 | Stop técnico além do nível |
-| `InpTimeExitMinutes` | 60 | Saída por tempo |
-| `InpMaxCycles` | 0 | Parar após X ciclos (0 = sem limite) |
+| `InpLotMultiplier` | 1.0 | Multiplicador de lote a cada entrada (acima de 1 = martingale) |
+| `InpNewCycleAfterLimit` | sim | Novo ciclo só depois que o atual completar as N entradas (ou fechar) |
+| `InpMaxOpenCycles` | 3 | Ciclos abertos ao mesmo tempo |
+| `InpMaxCycles` | 0 | Parar após X ciclos iniciados (0 = sem limite) |
 | `InpCycleLimitScope` | Por dia | Contagem dos ciclos: por dia ou total |
+| `InpTPMode` | US$ do preço médio | Tipo de alvo: dinheiro, % topo-fundo, dinheiro ou %, US$ do preço médio |
+| `InpTPRangePct` | 30 | Alvo em % da distância entre topo e fundo relevantes |
+| `InpTPPriceDist` | 3.0 | Alvo em US$ a favor do preço médio |
+| `InpBasketTPMoney` | 5 | **Lucro X para sair**, na moeda da conta. O painel mostra quanto movimento do ouro isso representa |
+| `InpTPPerExtraOrder` | 0 | Alvo em dinheiro maior a cada ordem extra |
+| `InpServerTP` | sim | Envia o alvo, o stop técnico e o trailing como TP/SL reais nas ordens |
+| `InpIncludeCommission` | sim | Desconta comissão (entrada + saída) do lucro da cesta |
+| `InpTrailMode` | Desligado | Trailing stop da cesta |
+| `InpTrailStartPrice` | 3.0 | Início do trailing (US$ a favor do preço médio) |
+| `InpTrailDistPrice` | 1.5 | Recuo do trailing (US$ a partir do melhor preço) |
+| `InpTrailLockPct` | 50 | % do lucro garantido quando o trailing ativa |
+| `InpInvalidateATR` | 1.0 | Stop técnico além do nível |
+| `InpTimeExitMinutes` | 0 | Saída por tempo (0 = desligada) |
 | `InpDailyTargetMoney` / `InpDailyMaxLossMoney` | 0 | Meta e perda diária (0 = desligado) |
 | `InpEquityTarget` | 0 | Fecha tudo e para quando o equity chegar a X |
 | `InpMaxSpreadPrice` | 0.60 | Spread máximo para entrar |
+| `InpMagic` | 440030 | Número mágico base. Cada ciclo usa base + 0..9; outra instância no mesmo símbolo deve usar base + 10 ou mais |
 
-Os valores em dinheiro usam a **moeda da conta**. Na conta cent (USC), 100 = US$ 1,00.
+**Mudanças em relação às versões anteriores**:
+- os modos de grade (`InpGridMode`, `InpStepPrice`) saíram: agora é uma ordem por recusa;
+- `InpInitialOrders` virou `InpOrdersPerRejection`;
+- `InpMaxCycles` agora conta os ciclos **iniciados**;
+- o alvo em % é medido **a partir do nível operado**;
+- a saída por tempo vem desligada.
+
+Confira os parâmetros salvos no Testador antes de rodar.
+
+**Valores em dinheiro** usam a **moeda da conta**. No Testador de Estratégia o depósito costuma ser em **USD**, então um alvo de 100 significa US$ 100, o que exige um movimento de US$ 100 no ouro com 0.01 lote. Confira no painel a linha "US$ 1 no ouro = ...".
 
 ## Recomendações
 
 - Faça **backtest** no Testador de Estratégia com "Cada tick baseado em ticks reais". Depois rode em **demo** antes de usar a conta real.
-- O modo `Contra o preço` aumenta a exposição quando o mercado vai contra. Mantenha o **stop técnico** ligado e, se quiser, o `InpBasketSLMoney` e a perda diária.
+- Vários ciclos abertos ao mesmo tempo somam exposição. Ajuste `InpMaxOpenCycles`, o lote e o stop técnico ao tamanho da conta.
 - `InpLotMultiplier` acima de 1.0 vira martingale. Use com muito cuidado.
-- O estado do ciclo fica salvo em Variáveis Globais do terminal (F3). Para começar do zero, use `InpResetState = true`.
+- O estado dos ciclos fica salvo em Variáveis Globais do terminal (F3), e cada teste no Testador começa do zero. Para começar do zero na conta, use `InpResetState = true`.
 
 > Aviso: operar ouro alavancado tem alto risco. Este robô não garante lucro.
