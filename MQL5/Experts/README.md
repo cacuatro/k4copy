@@ -11,11 +11,17 @@ Robô (Expert Advisor) que opera ciclos de entradas no **XAUUSD** na **recusa de
    - `Contra o preço`: a cada US$ 1,50 contra (preço médio).
    - `A favor do preço`: a cada US$ 1,50 a favor (pirâmide).
    - `Por tempo`: a cada X segundos, enquanto o preço segue do lado certo do nível.
-4. **Saída rápida**: a cesta inteira fecha quando o lucro chega ao valor X (`InpBasketTPMoney`). Também pode sair:
+4. **Saída rápida**: a cesta inteira fecha no alvo escolhido em `InpTPMode`:
+   - `Valor em dinheiro (X)`: quando o lucro somado chega a `InpBasketTPMoney` (+ `InpTPPerExtraOrder` por ordem extra).
+   - `% da distância topo-fundo`: o alvo é um preço. A partir da 1ª ordem da cesta, o preço precisa andar `InpTPRangePct`% da distância entre o topo e o fundo relevantes. Exemplo: topo 2.650 e fundo 2.630 (distância US$ 20), alvo 30% → US$ 6. Vendeu em 2.648, então o alvo é 2.642. No preço médio, as ordens extras entram mais acima, então todas lucram mais no mesmo alvo. O alvo aparece como linha verde pontilhada.
+   - `O que vier primeiro`: usa os dois alvos.
+
+   A cesta também pode sair:
    - por tempo, no zero a zero, depois de X minutos;
    - pelo stop técnico, se o preço passar 1×ATR além do nível;
    - pelo stop em dinheiro da cesta.
 5. **Ciclos**: cada ciclo tem até **10 entradas**. Se a cesta fecha no lucro antes das 10 entradas, o robô pode entrar de novo no mesmo nível com uma nova recusa. Depois de completar as 10 entradas, ou se o nível for rompido, aquele topo/fundo fica marcado como usado. O próximo ciclo só começa no **próximo topo/fundo relevante**.
+6. **Limite de ciclos**: `InpMaxCycles` faz o robô parar depois de X ciclos concluídos. A contagem pode ser **por dia** (zera todo dia) ou **total** (zera com `InpResetState = true`). Um ciclo em andamento sempre termina normalmente.
 
 ## Instalação
 
@@ -38,9 +44,14 @@ Robô (Expert Advisor) que opera ciclos de entradas no **XAUUSD** na **recusa de
 | `InpLot` | 0.01 | Lote de cada ordem |
 | `InpGridMode` | Contra | Como adicionar as próximas ordens |
 | `InpStepPrice` | 1.50 | Distância entre ordens (US$ no preço do ouro) |
+| `InpTPMode` | Dinheiro | Tipo de alvo: dinheiro, % topo-fundo, ou o que vier primeiro |
+| `InpTPRangePct` | 30 | Alvo em % da distância entre topo e fundo relevantes |
 | `InpBasketTPMoney` | 100 | **Lucro X para sair** (na moeda da conta; em cent, 100 = US$ 1) |
+| `InpTPPerExtraOrder` | 0 | Alvo em dinheiro maior a cada ordem extra (preço médio) |
 | `InpInvalidateATR` | 1.0 | Stop técnico além do nível |
 | `InpTimeExitMinutes` | 60 | Saída por tempo |
+| `InpMaxCycles` | 0 | Parar após X ciclos (0 = sem limite) |
+| `InpCycleLimitScope` | Por dia | Contagem dos ciclos: por dia ou total |
 | `InpDailyTargetMoney` / `InpDailyMaxLossMoney` | 0 | Meta e perda diária (0 = desligado) |
 | `InpEquityTarget` | 0 | Fecha tudo e para quando o equity chegar a X |
 | `InpMaxSpreadPrice` | 0.60 | Spread máximo para entrar |

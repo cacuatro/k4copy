@@ -4,9 +4,9 @@
 //|  Pensado para XAUUSD em conta cent (MetaTrader 5, conta hedge)   |
 //+------------------------------------------------------------------+
 #property copyright "k4copy"
-#property version   "2.00"
+#property version   "2.10"
 #property description "Detecta topos/fundos relevantes (ex.: M30) e entra na recusa do nível."
-#property description "Cada ciclo faz até N entradas; a cesta fecha ao atingir X de lucro."
+#property description "Cada ciclo faz até N entradas; a cesta fecha no alvo (X em dinheiro ou % topo-fundo)."
 #property description "Completado o ciclo, aguarda o próximo topo/fundo relevante."
 
 #include <Trade\Trade.mqh>
@@ -20,6 +20,21 @@ enum ENUM_GRID_MODE
    GRID_CONTRA   = 0, // Contra o preço (preço médio)
    GRID_FAVOR    = 1, // A favor do preço (pirâmide)
    GRID_INTERVAL = 2  // Por tempo, enquanto o nível segura
+  };
+
+//--- tipo de alvo (TP) da cesta
+enum ENUM_TP_MODE
+  {
+   TP_MONEY = 0, // Valor em dinheiro (X)
+   TP_RANGE = 1, // % da distância topo-fundo
+   TP_FIRST = 2  // O que vier primeiro
+  };
+
+//--- como contar o limite de ciclos
+enum ENUM_CYCLE_LIMIT
+  {
+   LIMIT_PER_DAY = 0, // Por dia (zera todo dia)
+   LIMIT_TOTAL   = 1  // Total (zera com "Apagar estado salvo")
   };
 
 //=== Topo/Fundo relevante ==========================================
@@ -51,7 +66,9 @@ input int             InpMinSecondsBetween = 30;          // Intervalo mínimo e
 
 //=== Saída rápida ==================================================
 input group "=== Saída rápida ==="
-input double          InpBasketTPMoney     = 100.0; // Lucro da cesta p/ sair (moeda da conta; cent: 100 = US$1)
+input ENUM_TP_MODE    InpTPMode            = TP_MONEY; // Tipo de alvo da cesta
+input double          InpTPRangePct        = 30.0;  // Alvo: % da distância entre topo e fundo relevantes
+input double          InpBasketTPMoney     = 100.0; // Alvo em dinheiro da cesta (moeda da conta; cent: 100 = US$1)
 input double          InpTPPerExtraOrder   = 0.0;   // Lucro adicional por ordem extra na cesta
 input double          InpBasketSLMoney     = 0.0;   // Prejuízo máx. da cesta (0 = desligado)
 input double          InpInvalidateATR     = 1.0;   // Stop técnico: preço além do nível (x ATR; 0 = off)
@@ -59,6 +76,11 @@ input int             InpTimeExitMinutes   = 60;    // Após X min, sai com o lu
 input double          InpTimeExitMinProfit = 0.0;   // Lucro mínimo da saída por tempo
 input double          InpOrderTPPrice      = 0.0;   // TP individual (US$ no preço; 0 = off)
 input double          InpOrderSLPrice      = 0.0;   // SL individual (US$ no preço; 0 = off)
+
+//=== Limite de ciclos ==============================================
+input group "=== Limite de ciclos ==="
+input int              InpMaxCycles       = 0;             // Parar após X ciclos (0 = sem limite)
+input ENUM_CYCLE_LIMIT InpCycleLimitScope = LIMIT_PER_DAY; // Contagem dos ciclos
 
 //=== Proteção da conta =============================================
 input group "=== Proteção da conta ==="
@@ -88,6 +110,8 @@ double   g_cycleLevel     = 0.0;
 double   g_cycleATR       = 0.0;
 datetime g_cycleSwingTime = 0;
 int      g_cycleEntries   = 0;
+double   g_cycleTPDist    = 0.0;   // distância do alvo topo-fundo (preço)
+int      g_cyclesDone     = 0;     // ciclos concluídos (para o limite)
 datetime g_usedTop[MAX_USED];      // topos já operados
 datetime g_usedBot[MAX_USED];      // fundos já operados
 
@@ -100,6 +124,8 @@ double   g_topLevel = 0.0;
 double   g_botLevel = 0.0;
 datetime g_topTime  = 0;
 datetime g_botTime  = 0;
+double   g_topAmp   = 0.0;          // tamanho do movimento que formou o topo
+double   g_botAmp   = 0.0;          // tamanho do movimento que formou o fundo
 
 //--- controle
 datetime g_lastConfirmBar   = 0;
@@ -150,6 +176,11 @@ int OnInit()
       Print("Aviso: a conta não é HEDGE. Em conta netting as ordens se somam numa posição só.");
    if(StringFind(_Symbol, "XAU") < 0)
       Print("Aviso: robô pensado para XAUUSD, rodando em ", _Symbol);
+   if(InpTPMode != TP_MONEY && InpTPRangePct <= 0.0)
+     {
+      Print("Parâmetros inválidos: com alvo topo-fundo, a % do alvo deve ser > 0.");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
    if(InpInvalidateATR > 0.0 && InpInvalidateATR <= InpMaxBreakATR)
       Print("Aviso: o stop técnico (", InpInvalidateATR, " ATR) deve ser maior que o rompimento máximo (",
             InpMaxBreakATR, " ATR).");
@@ -234,7 +265,9 @@ void OnTick()
 //+------------------------------------------------------------------+
 void CheckSignals()
   {
-   if(g_hasTop && !IsUsed(true, g_topTime) &&
+   bool canStart = !CycleLimitReached();
+
+   if(canStart && g_hasTop && !IsUsed(true, g_topTime) &&
       !(g_cycleActive && g_cycleDir < 0 && g_cycleSwingTime == g_topTime) &&
       SwingIntact(true, g_topLevel, g_atr) && IsRejection(true, g_topLevel, g_atr))
      {
@@ -242,7 +275,7 @@ void CheckSignals()
       return;
      }
 
-   if(g_hasBot && !IsUsed(false, g_botTime) &&
+   if(canStart && g_hasBot && !IsUsed(false, g_botTime) &&
       !(g_cycleActive && g_cycleDir > 0 && g_cycleSwingTime == g_botTime) &&
       SwingIntact(false, g_botLevel, g_atr) && IsRejection(false, g_botLevel, g_atr))
      {
@@ -271,8 +304,10 @@ void StartCycle(int dir, double level, datetime swingTime)
    g_cycleATR       = g_atr;
    g_cycleSwingTime = swingTime;
    g_cycleEntries   = 0;
-   g_status = StringFormat("Novo ciclo de %s no %s %.2f", dir > 0 ? "COMPRA" : "VENDA",
-                           dir > 0 ? "fundo" : "topo", level);
+   g_cycleTPDist    = CycleRange(dir, level) * InpTPRangePct / 100.0;
+   g_status = StringFormat("Novo ciclo de %s no %s %.2f (alvo topo-fundo: %.2f)",
+                           dir > 0 ? "COMPRA" : "VENDA", dir > 0 ? "fundo" : "topo",
+                           level, g_cycleTPDist);
    Print(g_status);
    SaveState();
    OpenInitialOrders();
@@ -284,7 +319,11 @@ void EndCycle(string reason)
    if(!g_cycleActive)
       return;
    MarkUsed(g_cycleDir < 0, g_cycleSwingTime);
-   Print("Fim do ciclo (", reason, "). Aguardando o próximo topo/fundo relevante.");
+   if(g_cycleEntries > 0)
+      g_cyclesDone++;
+   Print("Fim do ciclo (", reason, "). Ciclos concluídos: ", g_cyclesDone,
+         CycleLimitReached() ? ". Limite de ciclos atingido, robô parado."
+                             : ". Aguardando o próximo topo/fundo relevante.");
 
    g_status         = "Fim do ciclo: " + reason;
    g_cycleActive    = false;
@@ -293,7 +332,28 @@ void EndCycle(string reason)
    g_cycleATR       = 0.0;
    g_cycleSwingTime = 0;
    g_cycleEntries   = 0;
+   g_cycleTPDist    = 0.0;
    SaveState();
+  }
+
+//+------------------------------------------------------------------+
+bool CycleLimitReached()
+  {
+   return(InpMaxCycles > 0 && g_cyclesDone >= InpMaxCycles);
+  }
+
+//+------------------------------------------------------------------+
+//| Distância entre o topo e o fundo relevantes. Usa no mínimo o      |
+//| tamanho do movimento que formou o nível operado.                  |
+//+------------------------------------------------------------------+
+double CycleRange(int dir, double level)
+  {
+   double range = (dir < 0) ? g_topAmp : g_botAmp;
+   if(dir < 0 && g_hasBot && g_botLevel < level)
+      range = MathMax(range, level - g_botLevel);
+   if(dir > 0 && g_hasTop && g_topLevel > level)
+      range = MathMax(range, g_topLevel - level);
+   return(range);
   }
 
 //+------------------------------------------------------------------+
@@ -388,9 +448,23 @@ bool OpenOrder(int dir, int openCount)
 //+------------------------------------------------------------------+
 void ManageExit(int n)
   {
-   double profit = BasketProfit();
+   double profit      = BasketProfit();
+   double rangeTarget = RangeTargetPrice();
+   // sem ciclo ativo (estado perdido) o alvo em dinheiro vale como reserva
+   bool   useMoney    = (InpTPMode != TP_RANGE || rangeTarget <= 0.0);
 
-   if(InpBasketTPMoney > 0.0 && profit >= BasketTarget(n))
+   if(rangeTarget > 0.0 && profit > 0.0)
+     {
+      bool hit = (g_cycleDir < 0) ? (SymbolInfoDouble(_Symbol, SYMBOL_ASK) <= rangeTarget)
+                                  : (SymbolInfoDouble(_Symbol, SYMBOL_BID) >= rangeTarget);
+      if(hit)
+        {
+         RequestCloseAll(StringFormat("Alvo topo-fundo %.2f atingido: %.2f", rangeTarget, profit), false);
+         return;
+        }
+     }
+
+   if(useMoney && InpBasketTPMoney > 0.0 && profit >= BasketTarget(n))
      {
       RequestCloseAll(StringFormat("Alvo da cesta atingido: %.2f", profit), false);
       return;
@@ -413,6 +487,20 @@ void ManageExit(int n)
 double BasketTarget(int n)
   {
    return(InpBasketTPMoney + InpTPPerExtraOrder * MathMax(0, n - 1));
+  }
+
+//+------------------------------------------------------------------+
+//| Alvo topo-fundo: a partir da 1ª ordem da cesta, anda X% da        |
+//| distância entre o topo e o fundo relevantes. 0 = não se aplica.   |
+//+------------------------------------------------------------------+
+double RangeTargetPrice()
+  {
+   if(InpTPMode == TP_MONEY || !g_cycleActive || g_cycleTPDist <= 0.0)
+      return(0.0);
+   double firstPrice = FirstEntryPrice();
+   if(firstPrice <= 0.0)
+      return(0.0);
+   return(NormalizeDouble(firstPrice + g_cycleDir * g_cycleTPDist, _Digits));
   }
 
 //+------------------------------------------------------------------+
@@ -474,6 +562,8 @@ void UpdateDay()
    g_dayKey         = key;
    g_dayStartEquity = AccountInfoDouble(ACCOUNT_EQUITY);
    g_haltDay        = false;
+   if(InpCycleLimitScope == LIMIT_PER_DAY)
+      g_cyclesDone = 0;
    SaveState();
   }
 
@@ -544,8 +634,8 @@ void RefreshSwings()
       return; // histórico ainda carregando, tenta no próximo tick
 
    g_atr    = atr;
-   g_hasTop = FindSwing(r, true,  relevance, atr, g_topLevel, g_topTime);
-   g_hasBot = FindSwing(r, false, relevance, atr, g_botLevel, g_botTime);
+   g_hasTop = FindSwing(r, true,  relevance, atr, g_topLevel, g_topTime, g_topAmp);
+   g_hasBot = FindSwing(r, false, relevance, atr, g_botLevel, g_botTime, g_botAmp);
    g_swingBar = bar;
   }
 
@@ -554,10 +644,11 @@ void RefreshSwings()
 //| amplitude mínima em ATR e não superado depois. Pega o mais recente|
 //+------------------------------------------------------------------+
 bool FindSwing(const MqlRates &r[], bool isTop, int relevance, double atr,
-               double &level, datetime &swingTime)
+               double &level, datetime &swingTime, double &amplitude)
   {
    level     = 0.0;
    swingTime = 0;
+   amplitude = 0.0;
 
    for(int i = InpSwingStrength + 1; i <= InpLookbackBars; i++)
      {
@@ -587,6 +678,7 @@ bool FindSwing(const MqlRates &r[], bool isTop, int relevance, double atr,
 
       level     = v;
       swingTime = r[i].time;
+      amplitude = MathAbs(v - opp);
       return(true);
      }
    return(false);
@@ -713,6 +805,24 @@ bool LastEntry(double &price, datetime &time)
    return(best >= 0);
   }
 
+double FirstEntryPrice()
+  {
+   long   oldest = -1;
+   double price  = 0.0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      if(!IsOurPosition(PositionGetTicket(i)))
+         continue;
+      long t = PositionGetInteger(POSITION_TIME_MSC);
+      if(oldest < 0 || t < oldest)
+        {
+         oldest = t;
+         price  = PositionGetDouble(POSITION_PRICE_OPEN);
+        }
+     }
+   return(price);
+  }
+
 datetime OldestEntryTime()
   {
    datetime oldest = 0;
@@ -788,6 +898,8 @@ void SaveState()
    GlobalVariableSet(g_pfx + "atr",     g_cycleATR);
    GlobalVariableSet(g_pfx + "swing",   (double)g_cycleSwingTime);
    GlobalVariableSet(g_pfx + "entries", g_cycleEntries);
+   GlobalVariableSet(g_pfx + "tpDist",  g_cycleTPDist);
+   GlobalVariableSet(g_pfx + "cycles",  g_cyclesDone);
    GlobalVariableSet(g_pfx + "dayKey",  g_dayKey);
    GlobalVariableSet(g_pfx + "dayEq",   g_dayStartEquity);
    for(int i = 0; i < MAX_USED; i++)
@@ -807,6 +919,8 @@ void LoadState()
    g_cycleATR       = GlobalVariableGet(g_pfx + "atr");
    g_cycleSwingTime = (datetime)(long)GlobalVariableGet(g_pfx + "swing");
    g_cycleEntries   = (int)GlobalVariableGet(g_pfx + "entries");
+   g_cycleTPDist    = GlobalVariableGet(g_pfx + "tpDist");
+   g_cyclesDone     = (int)GlobalVariableGet(g_pfx + "cycles");
    g_dayKey         = (int)GlobalVariableGet(g_pfx + "dayKey");
    g_dayStartEquity = GlobalVariableGet(g_pfx + "dayEq");
    for(int i = 0; i < MAX_USED; i++)
@@ -843,10 +957,27 @@ void Render()
       SetHLine(K4_PREFIX + "Top",    g_hasTop ? g_topLevel : 0.0, clrTomato,     STYLE_DASH);
       SetHLine(K4_PREFIX + "Bottom", g_hasBot ? g_botLevel : 0.0, clrDodgerBlue, STYLE_DASH);
       SetHLine(K4_PREFIX + "Cycle",  g_cycleActive ? g_cycleLevel : 0.0, clrGold, STYLE_SOLID);
+      SetHLine(K4_PREFIX + "Target", RangeTargetPrice(), clrLimeGreen, STYLE_DOT);
      }
 
    int    n      = CountPositions();
    double profit = BasketProfit();
+   double rangeTarget = RangeTargetPrice();
+   string target;
+   if(InpTPMode == TP_RANGE && rangeTarget > 0.0)
+      target = StringFormat("preço %.2f", rangeTarget);
+   else if(InpTPMode == TP_FIRST && rangeTarget > 0.0)
+      target = StringFormat("preço %.2f ou %.2f", rangeTarget, BasketTarget(n));
+   else
+      target = StringFormat("%.2f", BasketTarget(n));
+
+   string limit = (InpMaxCycles > 0)
+                  ? StringFormat("%d/%d %s", g_cyclesDone, InpMaxCycles,
+                                 InpCycleLimitScope == LIMIT_PER_DAY ? "hoje" : "no total")
+                  : StringFormat("%d (sem limite)", g_cyclesDone);
+   string status = (!g_cycleActive && n == 0 && CycleLimitReached())
+                   ? "PARADO: limite de ciclos atingido"
+                   : g_status;
    string cycle  = g_cycleActive
                    ? StringFormat("%s em %.2f | entradas %d/%d",
                                   g_cycleDir > 0 ? "COMPRA" : "VENDA", g_cycleLevel,
@@ -856,14 +987,15 @@ void Render()
    Comment(StringFormat("K4 Rejection Cycles | %s\n"
                         "Topo relevante: %s | Fundo relevante: %s | ATR: %.2f\n"
                         "Ciclo: %s\n"
-                        "Posições: %d | Lucro cesta: %.2f | Alvo: %.2f\n"
+                        "Ciclos concluídos: %s\n"
+                        "Posições: %d | Lucro cesta: %.2f | Alvo: %s\n"
                         "Resultado do dia: %.2f\n"
                         "%s",
                         _Symbol,
                         g_hasTop ? DoubleToString(g_topLevel, _Digits) : "-",
                         g_hasBot ? DoubleToString(g_botLevel, _Digits) : "-",
-                        g_atr, cycle, n, profit, BasketTarget(n),
+                        g_atr, cycle, limit, n, profit, target,
                         AccountInfoDouble(ACCOUNT_EQUITY) - g_dayStartEquity,
-                        g_status));
+                        status));
   }
 //+------------------------------------------------------------------+
