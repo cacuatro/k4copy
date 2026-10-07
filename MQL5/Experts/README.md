@@ -28,7 +28,8 @@ Robô (Expert Advisor) que opera **ciclos de entradas** no **XAUUSD** na **recus
 
    Na pirâmide, o preço médio sobe junto com as entradas. Por isso o alvo "US$ a favor do preço médio" também se afasta. Para pirâmide, prefira o alvo em **% topo-fundo** (um preço fixo) ou o **trailing stop**.
    - O ciclo **termina quando a cesta dele fecha**, por alvo, trailing ou stop, **mesmo antes de completar as N entradas**. Aquele topo/fundo não é operado de novo.
-   - **Depois que o ciclo atinge o limite de N entradas**, o **próximo ciclo começa no próximo topo/fundo relevante**, **mesmo que o ciclo anterior ainda tenha ordens abertas**. Cada ciclo tem a própria cesta, o próprio limite de entradas e o próprio alvo/trailing. Esse comportamento é o padrão (`InpNewCycleAfterLimit = true`). Com `false`, um ciclo novo pode começar antes, e o anterior para de abrir ordens.
+   - Quando o preço **sai do nível** (por exemplo, rompe o topo/fundo) e chega ao **próximo topo/fundo relevante**, a recusa ali **inicia um novo ciclo**, mesmo que o anterior não tenha completado as N entradas. O ciclo anterior **para de abrir ordens**, mas as ordens dele continuam até o alvo, o trailing ou o stop. Cada ciclo tem a própria cesta, o próprio limite de entradas e o próprio alvo/trailing. Esse é o padrão (`InpNewCycleAfterLimit = false`).
+   - Com `InpNewCycleAfterLimit = true`, o robô **espera** o ciclo atual completar as N entradas (ou fechar) antes de começar outro.
    - Um ciclo também deixa de abrir ordens quando o trailing dele ativa. Isso libera o próximo ciclo.
    - Um "novo topo" criado só por um pavio que passou um pouco do nível de um ciclo aberto é tratado como **o mesmo nível**.
    - Os ciclos são numerados (#1, #2, ...). O número aparece no painel, no Diário, nas linhas do gráfico e no comentário das ordens.
@@ -104,7 +105,7 @@ Cada fim de ciclo aparece na aba **Diário**, com o motivo e o **resultado líqu
 | `InpMinSecondsBetween` | 30 | Pirâmide/preço médio: intervalo mínimo entre ordens (segundos) |
 | `InpLot` | 0.01 | Lote de cada ordem |
 | `InpLotMultiplier` | 1.0 | Multiplicador de lote a cada entrada (acima de 1 = martingale) |
-| `InpNewCycleAfterLimit` | sim | Novo ciclo só depois que o atual completar as N entradas (ou fechar) |
+| `InpNewCycleAfterLimit` | não | `false`: o próximo topo/fundo relevante inicia novo ciclo. `true`: espera o atual completar as N entradas |
 | `InpMaxOpenCycles` | 3 | Ciclos abertos ao mesmo tempo |
 | `InpMaxCycles` | 0 | Parar após X ciclos iniciados (0 = sem limite) |
 | `InpCycleLimitScope` | Por dia | Contagem dos ciclos: por dia ou total |

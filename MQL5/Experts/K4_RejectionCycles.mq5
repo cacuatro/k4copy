@@ -4,10 +4,10 @@
 //|  Pensado para XAUUSD em conta cent (MetaTrader 5, conta hedge)   |
 //+------------------------------------------------------------------+
 #property copyright "k4copy"
-#property version   "3.10"
+#property version   "3.11"
 #property description "Cada topo/fundo relevante (ex.: M30) abre um ciclo de até N entradas (por recusa, pirâmide ou preço médio)."
 #property description "Cada ciclo tem a sua cesta, alvo e trailing; termina quando a cesta fecha."
-#property description "O próximo ciclo começa no próximo topo/fundo relevante (por padrão, depois que o atual completar as entradas)."
+#property description "Quando o preço chega ao próximo topo/fundo relevante, começa um novo ciclo (o anterior para de abrir ordens)."
 
 #include <Trade\Trade.mqh>
 
@@ -86,7 +86,7 @@ input double           InpStepPrice          = 1.50;          // Pirâmide/preç
 input int              InpMinSecondsBetween  = 30;            // Pirâmide/preço médio: intervalo mínimo entre ordens (seg)
 input double           InpLot                = 0.01;          // Lote de cada ordem
 input double           InpLotMultiplier      = 1.0;           // Multiplicador de lote por entrada (1.0 = fixo)
-input bool             InpNewCycleAfterLimit = true;          // Novo ciclo só depois que o atual completar as N entradas (ou fechar)
+input bool             InpNewCycleAfterLimit = false;         // true = espera o ciclo atual completar as N entradas; false = novo topo/fundo inicia novo ciclo
 input int              InpMaxOpenCycles      = 3;             // Ciclos abertos ao mesmo tempo (máx. 10)
 input int              InpMaxCycles          = 0;             // Parar após X ciclos iniciados (0 = sem limite)
 input ENUM_CYCLE_LIMIT InpCycleLimitScope    = LIMIT_PER_DAY; // Contagem dos ciclos
