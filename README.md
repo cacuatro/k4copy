@@ -2,7 +2,7 @@
 
 Canal público de distribuição do K4 Signals para Windows, autorizado pelo proprietário.
 
-Versão estável: **1.7.5**, cumulativa a partir da **1.3.4**.
+Versão estável: **1.7.6**, cumulativa a partir da **1.3.4**.
 
 O cliente consulta `updates/stable.json` após 15 segundos e a cada cinco minutos, enquanto o painel está aberto. A preferência pode ser desligada no rodapé. Instale o FIX 1.6.0 uma vez para habilitar o atualizador.
 
@@ -39,3 +39,7 @@ Amplia a política Dan de SL provisório 15.00 para instruções informais com p
 ## 1.7.5
 
 Nova aba Andamento do robô reúne os dois grupos com pendentes confirmadas no MT5, nível aguardado, distância com cotação recente, SL/TP, parâmetros aguardados e bloqueios em português. Mostra processo parado, sincronização e dados desatualizados. Região histórica sem liberação não aparece como ordem registrada; envio incerto permanece visível até conciliação. Painel apenas lê registros locais e não chama IA, Telegram ou corretora. A rotina periódica passa a registrar também as cotações verificadas para exibição. Não altera regras de entrada, lote, SL ou risco. Validação local: 416 testes e atualização cumulativa desde 1.3.4; interface Windows ainda depende de conferência no ambiente instalado.
+
+## 1.7.6
+
+Corrige o SL provisório de 15.00 quando a IA seleciona apenas alguns níveis literais de uma lista, como no diagnóstico Dan #16251. Apenas os níveis selecionados geram ordens; os omitidos ficam registrados e não comprovam exposição local. A checagem de cotação considera os níveis selecionados, preservando validações numéricas, risco agregado e não repetição. Corrige também o lote em edição idêntica ainda não enviada, sem permitir repetir envio incerto. Instruções da IA distinguem região citada no Telegram de operação confirmada no MT5. Validação local: 425 testes com respostas simuladas e FakeMT5, sem envio real à corretora. A atualização não reexecuta mensagens antigas.
