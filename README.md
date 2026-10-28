@@ -2,7 +2,7 @@
 
 Canal público de distribuição do K4 Signals para Windows, autorizado pelo proprietário.
 
-Versão estável: **1.7.1**, cumulativa a partir da **1.3.4**.
+Versão estável: **1.7.2**, cumulativa a partir da **1.3.4**.
 
 O cliente consulta `updates/stable.json` após 15 segundos e a cada cinco minutos, enquanto o painel está aberto. A preferência pode ser desligada no rodapé. Instale o FIX 1.6.0 uma vez para habilitar o atualizador.
 
@@ -23,3 +23,7 @@ Dan Golden: política local NOW com3 ordens XAUUSD e stop provisório10.00 unida
 ##1.7.1
 
 Correção conservadora de feed com horário futuro: verifica avanço dos ticks antes de normalizar a diferença, preservando bloqueio de cotação congelada e o padrão UTC. Ajuste isolado por conta/terminal/ativo e registrado no diagnóstico. Não muda o relógio da VPS nem presume o fuso de arquivos históricos. Novas interpretações solicitadas em português brasileiro e apresentação de motivos conhecidos traduzida. Registros técnicos originais preservados. Consulte limites e relatórios no pacote.
+
+## 1.7.2
+
+Leitura conjunta das mensagens recentes e respostas, distinguindo listas de níveis de faixas. Níveis separados podem gerar pendentes SINGLE/MULTIPLE com SL/TP válidos, sem depender da política de faixa BLOCK. Complemento por resposta direta exige origem incompleta ao vivo em até cinco minutos. Pendentes existentes impedem duplicação no mesmo nível; a IA não fornece stop ausente nem reaproveita operação antiga. O stop de 10.00 do Dan continua exclusivo do NOW direto. Motivos em português. Validação local: 362 testes e sobreposição cumulativa desde 1.3.4; sem chamada real ao modelo ou envio à corretora nesta validação.
