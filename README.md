@@ -2,7 +2,7 @@
 
 Canal público de distribuição do K4 Signals para Windows, autorizado pelo proprietário.
 
-Versão estável: **1.7.2**, cumulativa a partir da **1.3.4**.
+Versão estável: **1.7.3**, cumulativa a partir da **1.3.4**.
 
 O cliente consulta `updates/stable.json` após 15 segundos e a cada cinco minutos, enquanto o painel está aberto. A preferência pode ser desligada no rodapé. Instale o FIX 1.6.0 uma vez para habilitar o atualizador.
 
@@ -27,3 +27,7 @@ Correção conservadora de feed com horário futuro: verifica avanço dos ticks 
 ## 1.7.2
 
 Leitura conjunta das mensagens recentes e respostas, distinguindo listas de níveis de faixas. Níveis separados podem gerar pendentes SINGLE/MULTIPLE com SL/TP válidos, sem depender da política de faixa BLOCK. Complemento por resposta direta exige origem incompleta ao vivo em até cinco minutos. Pendentes existentes impedem duplicação no mesmo nível; a IA não fornece stop ausente nem reaproveita operação antiga. O stop de 10.00 do Dan continua exclusivo do NOW direto. Motivos em português. Validação local: 362 testes e sobreposição cumulativa desde 1.3.4; sem chamada real ao modelo ou envio à corretora nesta validação.
+
+## 1.7.3
+
+Dan: níveis individuais de pendentes sem SL passam a ter proteção provisória de 15.00 unidades do preço por entrada (BUY 4035 → SL 4020). Sem alvo, uma pendente por nível aguarda os parâmetros posteriores. SL/TP vinculados atualizam a mesma ordem ou posição, sem nova exposição; ampliar risco continua bloqueado. A proteção permanece após reinício. Checkbox exclusivo Dan e diagnóstico da política. Histórico, faixas, condições, falha da IA e ambiguidade não ativam o padrão. Risco e margem do conjunto são verificados antes da primeira ordem. Validação local: 383 testes com IA simulada e FakeMT5, sem envio real à corretora.

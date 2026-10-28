@@ -1,0 +1,12 @@
+{
+  "manifest": {
+    "product": "K4Signals",
+    "channel": "stable",
+    "version": "1.7.3",
+    "min_version": "1.3.4",
+    "package_path": "updates/packages/1.7.3.zip.b64",
+    "size": 248874,
+    "sha256": "d6fda020d44ffa62bcae459ca8856824db16523d3711b87be52961e79296e04e"
+  },
+  "signature": "Vdg0TiEBaiR1hUv9bOyFrWG9Yavc/eqrjqCRurHURFgYsv5OVZeymhgEuzSqIpIE0rehLUWHiuSPvlBYrhkol+cWTVl+29NMnjIB9uOZ1tg31AGuQJCoxnWHIZ25xkaq2V55PpeogR640PajsljCZnBac6IyUMzv3nLd5RLAc9etkVaatpBVoSnn3HQ4Iv7U08MJgB6pXTrunCrqW4T6vQ22+QOq/gP53vJ+gbWUsR3dloe/3ew9R1itDH3lgnsO0Haeg54OFqW9TewY1KXBifgHyVlZ/ZkhVgn5O1HwOvnKCpgO7GPp37JcxLOayTj1oX2dKWP1VZKZRTWWNe/2+0kiNWM8VCKuwr/a0I27q9glNhQ1k7BTbE/msDZ5vRNj2AGVlA2Fl23KQYnkh9t/y3mwY/sHbcBxO04nGE1jpjHPQAKqBT1xHoUe+0fS3b17TY8T/B9UX62WA3eaQpeFe1Sd5O0XWZEwzAQJg+lkDu1VXFg3BMLq17IPM5rC8kBD"
+}
