@@ -2,7 +2,7 @@
 
 Canal público de distribuição do K4 Signals para Windows, autorizado pelo proprietário.
 
-Versão estável: **1.7.4**, cumulativa a partir da **1.3.4**.
+Versão estável: **1.7.5**, cumulativa a partir da **1.3.4**.
 
 O cliente consulta `updates/stable.json` após 15 segundos e a cada cinco minutos, enquanto o painel está aberto. A preferência pode ser desligada no rodapé. Instale o FIX 1.6.0 uma vez para habilitar o atualizador.
 
@@ -35,3 +35,7 @@ Dan: níveis individuais de pendentes sem SL passam a ter proteção provisória
 ## 1.7.4
 
 Amplia a política Dan de SL provisório 15.00 para instruções informais com preço, como Buying slowly, primeira entrada e listas we buying again, sempre com interpretação válida, LIMIT do lado correto e risco verificado. Repetir nível de operação ativa não cria exposição adicional. A recuperação distingue resultados respondidos a outra ideia informal. Regiões históricas incompletas aparecem com motivo de não execução; carregar histórico permanece somente contexto, e a recuperação de ordens antigas continua exigindo sinal completo e prova de preços intactos. Validação local: 393 testes, respostas da IA simuladas e FakeMT5; sem envio real à corretora.
+
+## 1.7.5
+
+Nova aba Andamento do robô reúne os dois grupos com pendentes confirmadas no MT5, nível aguardado, distância com cotação recente, SL/TP, parâmetros aguardados e bloqueios em português. Mostra processo parado, sincronização e dados desatualizados. Região histórica sem liberação não aparece como ordem registrada; envio incerto permanece visível até conciliação. Painel apenas lê registros locais e não chama IA, Telegram ou corretora. A rotina periódica passa a registrar também as cotações verificadas para exibição. Não altera regras de entrada, lote, SL ou risco. Validação local: 416 testes e atualização cumulativa desde 1.3.4; interface Windows ainda depende de conferência no ambiente instalado.
