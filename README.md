@@ -2,7 +2,7 @@
 
 Canal público de distribuição do K4 Signals para Windows, autorizado pelo proprietário.
 
-Versão estável: **1.7.7**, cumulativa a partir da **1.3.4**.
+Versão estável: **1.7.8**, cumulativa a partir da **1.3.4**.
 
 O cliente consulta `updates/stable.json` após 15 segundos e a cada cinco minutos, enquanto o painel está aberto. A preferência pode ser desligada no rodapé. Instale o FIX 1.6.0 uma vez para habilitar o atualizador.
 
@@ -47,3 +47,7 @@ Corrige o SL provisório de 15.00 quando a IA seleciona apenas alguns níveis li
 ## 1.7.7
 
 A política Dan considera a lista atual explícita por inteiro, mesmo se a IA selecionar apenas alguns preços por já haver menções no histórico. Só exclui nível com pendente ou posição local confirmada no MT5 do mesmo perfil/grupo/ativo/direção, evitando duplicação. Sem exposição local, a lista 4025/4015/4005/3995/3985 planeja cinco pendentes, com SL 15 por entrada. Todas precisam respeitar cotação, risco agregado e margem; a lista não é reduzida silenciosamente para caber no limite. Diagnóstico distingue seleção da IA, lista original, exposição confirmada e novas pendentes planejadas. Validação local: 429 testes com respostas simuladas e FakeMT5, sem envio real à corretora. Não reexecuta mensagens antigas.
+
+## 1.7.8
+
+O painel distingue sinal não executado de pendente confirmada no MT5. Análises recusadas deixam de aparecer como aguardando resolução de pendência: mostram motivo, horário em Brasília e versão do interpretador, sem sugerir uma fila de aprovação. SL ou TP ainda aguardados do grupo não impedem a ativação de uma pendente já protegida. Mídia sem texto recebe explicação em português. Envios parciais e incertos continuam destacados para conciliação. Mantém a política 1.7.7 de lista completa, SL 15, risco agregado e não repetição; não reexecuta análises antigas. Validação local: 434 testes, atualização cumulativa desde 1.3.4 e assinatura validada pelo cliente 1.7.7; IA simulada e FakeMT5, sem envio real à corretora ou renderização nativa do Windows.
