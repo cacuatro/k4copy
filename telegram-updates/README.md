@@ -1,4 +1,4 @@
-# K4Telegram2MT5 0.4.27
+# K4Telegram2MT5 0.4.28
 
 Correção cumulativa sobre 0.4.25. Não instala dependências e não altera config.yaml,
 .env, sessões, bancos, contas ou lotes. SL e TPs do sinal permanecem os mesmos.
@@ -57,7 +57,7 @@ concluído, tenta reabrir a versão anterior e retomar o mesmo modo. A retomada 
 uma autorização local de uso único, válida por três minutos e vinculada ao hash
 da configuração; uma instalação inicial nunca liga operações sozinha.
 
-Canal de distribuição do K4Telegram2MT5, separado do K4 Signals. Não use
+Canal publicado separadamente do K4 Signals. Não use
 updates/stable.json: ele pertence ao K4 Signals.
 
 Instalação inicial: encerre robô e painel, extraia o FIX, execute APLICAR_FIX.bat
@@ -66,3 +66,5 @@ start_gui.bat. Mantenha a instalação existente; não copie seus dados ao GitHu
 
 Validação automatizada local com MT5 simulado. Aplicação nativa do atualizador,
 conexão Telegram e execução real no Windows ainda precisam de validação na VPS.
+
+Na versão 0.4.28, a faixa abaixo do título mostra o estado da atualização e a hora da última verificação. O botão Verificar agora antecipa a consulta, sem duplicar requisições. Falhas de rede, versão bloqueada e espera por alterações não salvas aparecem nessa faixa.
