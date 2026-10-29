@@ -1,4 +1,4 @@
-# K4Telegram2MT5 0.4.28
+# K4Telegram2MT5 0.4.29
 
 Correção cumulativa sobre 0.4.25. Não instala dependências e não altera config.yaml,
 .env, sessões, bancos, contas ou lotes. SL e TPs do sinal permanecem os mesmos.
@@ -67,4 +67,6 @@ start_gui.bat. Mantenha a instalação existente; não copie seus dados ao GitHu
 Validação automatizada local com MT5 simulado. Aplicação nativa do atualizador,
 conexão Telegram e execução real no Windows ainda precisam de validação na VPS.
 
-Na versão 0.4.28, a faixa abaixo do título mostra o estado da atualização e a hora da última verificação. O botão Verificar agora antecipa a consulta, sem duplicar requisições. Falhas de rede, versão bloqueada e espera por alterações não salvas aparecem nessa faixa.
+Na versão 0.4.29, a faixa abaixo do título mostra o estado da atualização e a hora da última verificação. O botão Verificar agora antecipa a consulta, sem duplicar requisições. Falhas de rede, versão bloqueada e espera por alterações não salvas aparecem nessa faixa.
+
+0.4.29: BE explícito protege todas as posições ainda abertas, incluindo TP1. BE automático após TP1 mantém comportamento anterior. Edição de BE aceita somente com resposta vinculada à operação aberta, mensagem original com até 5 minutos e data de edição com até 2 minutos; exige posição confirmada no MT5 e validação da IA. Edições com outros comandos permanecem bloqueadas. Repetições não afrouxam stops já protegidos. Não executa retroativamente o caso de 29/10 nem implementa fechamento parcial.
