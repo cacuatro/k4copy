@@ -2,11 +2,11 @@
   "manifest": {
     "product": "K4Signals",
     "channel": "stable",
-    "version": "1.7.18",
+    "version": "1.7.19",
     "min_version": "1.3.4",
-    "package_path": "updates/packages/1.7.18.zip.b64",
-    "size": 330492,
-    "sha256": "602b4411e78622425cc0797d6422c7948f7524597101ca59d3dc361f2c7eb7d7"
+    "package_path": "updates/packages/1.7.19.zip.b64",
+    "size": 338151,
+    "sha256": "7829bd0e6897210a291c227e7aa5a0f2977591049c7a90c48fe4b2010240c80e"
   },
-  "signature": "AWaEABC61KJnc/lpw9qACL/m+wYuqJD3B6/Burk8SVJJOlbaIaMv+VIcp7JUqoZDK/AUEVBEfOfLqyFUD8hQD1xvQ97hWyGW2a+GdLqBK5AvMYuPeLmCIemgtq1S8+3COg5/XLBAnszk/aIjbahO98i/XUivonfQiEuw0VLKsYT7BHiGIK6Fx+tt5NsWouS6olkyWHaX8A+MYBXlMxwYNK7TSg4OUMQxpDCsWQHO9dDcwaclZEV3SGyHIXFm7FBQZqSS8ukly8I6MtMvZQHB8bQDhnnMfnCtJ5zNeHwuG/OSyyr9Huk/iZDZS99CKNEkzeRIEIkFyd1jF5cUYd9RBnqwaSZ5Sr7TH1lneEnA3sA4KRDRTlYLl7UuidvUwnML4EF9G3qSUnAH1srpFl3akBpEHPb/hnFyFYkoNzvgzDWaq7BYY/AYARWLdDaNM1CyMImhP+ZR6eucGjJ/8JkqkfbGPxutSYrjKqXpX+b6rkDJulyZlw3E4GTfD4ykTfbt"
+  "signature": "KiApHaKvDnh0exeqe5UVGgeJ4FX8ekwS9liGizcq5kQdI9cBGsIbI/1v6/DldswfAYdsnkSJ+NU7Le871X3zX6H2xPWbNynJUDqPbWD2ivXoJ6uZl3ltxK+Pw4ibKZXmGRLKaZgTesHUcRlPI/JqIlSICWhRDCy9D5hOSiuK/iu8rlrZrqBiLnBEou5Aq+yNtFrcbr4UDM+wRzPo0eTbjHvuycmkyBWkIYnOhfS9xBkIUBw6k/UzfrQE7bMBmmL2pueF46WlUdOXZ409nT9a4FHC7z1VC7jRl1B9k53/Ot8ATRNu79hZ/04wz6yWEOlhSl0edhFhMJhUmQog/N5RTbPwUuHZbqS24SqAdbOg7aa0r/oaElWtzYBfedSkIQjZ3jmaZTUiITTzg//OlS9RDB55MamN7DR0sF5gJZ9akq7W+/1COdcPyEm6mYRis4q4B5wlFfypz0aQ0gBvJySr32rs7oUDodiEWmKgeG369OPvu0otxBx2GjDZjW6zzMeB"
 }
