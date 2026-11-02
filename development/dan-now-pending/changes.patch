@@ -1,0 +1,400 @@
+--- a/k4signals/configuration.py
++++ b/k4signals/configuration.py
+@@ -11,6 +11,9 @@
+     profile = config.get('profiles', {}).get('dan_golden')
+     if isinstance(profile, dict):
+         execution = profile.setdefault('execution', {})
++        execution.setdefault('now_entry_tolerance_price', 3.0)
++        execution.setdefault('now_pending_fallback_enabled', True)
++        execution.setdefault('now_pending_validity_seconds', 86400)
+         if execution.get('quantity_policy_revision', 0) < 1:
+             execution['max_positions'] = 60
+             execution['quantity_policy_revision'] = 1
+@@ -42,7 +45,7 @@
+         profile=config.get('profiles',{}).get(name)
+         if not isinstance(profile,dict):continue
+         ex=profile.get('execution',{})
+-        if (name=='dan_golden' and ex.get('quantity_policy_revision',0)<2) or ex.get('sl_policy_revision',0)<1 or ex.get('risk_policy_revision',0)<1 or (name=='dan_golden' and ex.get('zone_policy_revision',0)<2):changed=True
++        if (name=='dan_golden' and any(k not in ex for k in ('now_entry_tolerance_price','now_pending_fallback_enabled','now_pending_validity_seconds'))) or (name=='dan_golden' and ex.get('quantity_policy_revision',0)<2) or ex.get('sl_policy_revision',0)<1 or ex.get('risk_policy_revision',0)<1 or (name=='dan_golden' and ex.get('zone_policy_revision',0)<2):changed=True
+     if changed:upgrade_execution_policies(config)
+     return changed
+ 
+@@ -98,6 +101,11 @@
+                              ('max_entry_deviation_points', None)]:
+             number(execution.get(key), name + '.' + key, maximum=maximum,
+                    allow_zero=key == 'max_entry_deviation_points')
++        if name == 'dan_golden':
++            number(execution.get('now_entry_tolerance_price', 3.0), name + '.now_entry_tolerance_price')
++            number(execution.get('now_pending_validity_seconds', 86400), name + '.now_pending_validity_seconds')
++            if type(execution.get('now_pending_fallback_enabled', True)) is not bool:
++                raise ValueError('now_pending_fallback_enabled deve ser booleano')
+         number(execution.get('max_positions'), name + '.max_positions', integer=True)
+         if type(execution.get('unlimited_pending_orders', False)) is not bool:
+             raise ValueError(name + ': opção de pendentes sem limite deve ser booleana.')
+--- a/k4signals/execution.py
++++ b/k4signals/execution.py
+@@ -521,6 +521,8 @@
+         from .instant import first_edited, policy, now_side
+         if int(message.get('revision', 1)) != 1 and message.get('source')!='historical_recovery' and not first_edited(self,message,action):
+             raise ReviewRequired('Edited signals cannot create new entry orders')
++        from .now_pending import eligible
++        now_policy = eligible(self, message, action)
+         provisional=action.get('_instant_now') is True
+         pending_default=action.get('_pending_default_sl') is True
+         if pending_default:
+@@ -613,8 +615,27 @@
+             order_type = 'LIMIT' if independent_zone else order_type
+             announced = self._grid(announced, step, 'entry')
+             price = float(tick.ask if side == 'BUY' else tick.bid) if order_type == 'MARKET' else announced
+-            if order_type == 'MARKET' and abs(price - announced) / point > settings.get('max_entry_deviation_points', 50):
+-                raise ReviewRequired('Market price is outside configured entry tolerance')
++            tolerance = (_number(settings.get('now_entry_tolerance_price', 3.0), 'NOW tolerance')
++                         if now_policy else settings.get('max_entry_deviation_points', 50) * point)
++            fallback = False
++            if order_type == 'MARKET' and abs(price - announced) > tolerance + 1e-8:
++                if not now_policy or settings.get('now_pending_fallback_enabled', True) is not True:
++                    raise ReviewRequired('Market price is outside configured entry tolerance')
++                # Return-to-entry only: never turn a favourable move into a STOP.
++                if (side == 'BUY' and price <= announced) or (side == 'SELL' and price >= announced):
++                    raise ReviewRequired('NOW fallback requires a retracement LIMIT')
++                closing = float(tick.bid if side == 'BUY' else tick.ask)
++                if any((closing >= t if side == 'BUY' else closing <= t) for t in targets if t):
++                    raise ReviewRequired('NOW target already reached before pending registration')
++                pending_orders = self.mt5.orders_get()
++                if pending_orders is None:
++                    raise ReviewRequired('Pending inventory unavailable for NOW fallback')
++                if any(o.magic == settings['magic'] and o.symbol == symbol and o.type == (2 if side == 'BUY' else 3)
++                       and abs(float(o.price_open)-announced) < point/2 for o in pending_orders):
++                    raise ReviewRequired('Existing pending entry at this NOW level')
++                order_type, price, fallback = 'LIMIT', announced, True
++                self._trace('NOW CONVERTIDO EM PENDENTE', entry=announced, tolerance_price=tolerance)
++
+             if order_type == 'LIMIT' and ((side == 'BUY' and price >= tick.ask) or (side == 'SELL' and price <= tick.bid)):
+                 if independent_zone:
+                     market=float(tick.ask if side=='BUY' else tick.bid)
+@@ -643,6 +664,12 @@
+                        'deviation': int(settings.get('max_entry_deviation_points', 50)),
+                        'type_time': getattr(self.mt5, 'ORDER_TIME_GTC', 0),
+                        'type_filling': self._filling(info, order_type != 'MARKET'), '_tp_number': tp_index+1}
++                if now_policy:
++                    req['_now_tolerance_price'] = tolerance
++                if fallback:
++                    from datetime import timedelta
++                    ttl = _number(settings.get('now_pending_validity_seconds', 86400), 'NOW pending validity')
++                    req['_now_pending_expires_at'] = (datetime.now(timezone.utc) + timedelta(seconds=ttl)).isoformat()
+                 if independent_zone:req['_independent_zone']=True
+                 if provisional:req['_instant_now']=True
+                 if pending_default:req['_pending_default_sl']=True
+@@ -815,7 +842,7 @@
+         market = float(tick.ask if buying else tick.bid)
+         distance = max(int(getattr(info, 'trade_stops_level', 0)), int(getattr(info, 'trade_freeze_level', 0))) * point
+         if request['action'] == getattr(self.mt5, 'TRADE_ACTION_DEAL', 1):
+-            tolerance = _number(settings.get('max_entry_deviation_points', 50), 'entry tolerance') * point
++            tolerance = request.get('_now_tolerance_price', _number(settings.get('max_entry_deviation_points', 50), 'entry tolerance') * point)
+             if announced is None or abs(market-announced) > tolerance or abs(market-request['price']) > tolerance:
+                 raise ReviewRequired('Market entry drifted beyond tolerance before send')
+             basis = market
+@@ -829,6 +856,10 @@
+                 abs(basis-market) < distance):
+                 raise ReviewRequired('Pending entry is no longer valid against the current market')
+         sl, tp = request['sl'], request['tp']
++        if request.get('_now_pending_expires_at') and tp:
++            closing = float(tick.bid if buying else tick.ask)
++            if (buying and closing >= tp) or (not buying and closing <= tp):
++                raise ReviewRequired('NOW target reached before pending send')
+         if ((buying and sl >= stop_basis-distance) or (not buying and sl <= stop_basis+distance)):
+             raise ReviewRequired('Protective stop is no longer valid at the current quote')
+         if tp and ((buying and tp <= basis+distance) or (not buying and tp >= basis-distance)):
+--- a/k4signals/grounding.py
++++ b/k4signals/grounding.py
+@@ -103,9 +103,15 @@
+                 allowed |= prices(original['text'])
+             for value in action.get('entry_prices', []):
+                 require(value, allowed, prefix + '.entry_prices')
+-            require(action.get('sl_price'), allowed, prefix + '.sl_price')
++            from .now_pending import parameter_sources
++            sources = parameter_sources(store, message, original) if original else {}
++            sl_allowed = allowed | ({_decimal(sources['sl_price']['value'])} if 'sl_price' in sources else set())
++            tp_allowed = allowed | ({_decimal(sources['tp_prices']['value'])} if 'tp_prices' in sources else set())
++            require(action.get('sl_price'), sl_allowed, prefix + '.sl_price')
+             for value in action.get('tp_prices', []):
+-                require(value, allowed, prefix + '.tp_prices')
++                require(value, tp_allowed, prefix + '.tp_prices')
++            if sources:
++                action['_parameter_sources'] = sources
+             runner_text = current + '\n' + _normalized(reply) + '\n' + _normalized(original['text'] if original else '')
+             if action.get('tp_open') and not _RUNNER.search(runner_text) and not (message.get('profile') == 'dan_golden' and policy.get('allow_missing_tp_with_sl') is True and not action.get('tp_prices') and action.get('sl_price') is not None):
+                 gaps.append(prefix + ': OPEN/runner is not grounded in source text')
+@@ -125,7 +131,8 @@
+                 pattern=r'\btp\s*'+str(update['target_number'])+r'\b'
+                 matched=re.search(pattern+r'\s*(?:(?:at|to)\s*|[:=@-]\s*)?(\d+(?:[.,]\d+)?)',current)
+                 from .pending_defaults import common_target
+-                common = update['target_number']==1 and common_target(store,message,action,update['price'])
++                from .now_pending import common_target as now_common
++                common = (update['target_number']==1 and common_target(store,message,action,update['price'])) or (update['target_number'] in (1,2,3) and now_common(store,message,action,update['price']))
+                 if (not matched or _decimal(matched.group(1))!=_decimal(update['price'])) and not common:
+                     gaps.append(prefix+': TP number and price do not match the current explicit instruction')
+         elif kind == 'UPDATE_SL':
+--- a/k4signals/instant.py
++++ b/k4signals/instant.py
+@@ -44,6 +44,13 @@
+     """Apply local policy only AFTER successful AI/schema/provenance validation."""
+     p=policy(getattr(executor,'config',{}),message['profile'])
+     if not p:return analysis
++    from .now_pending import common_target
++    if analysis.get('decision') == 'PROPOSE':
++        analysis = copy.deepcopy(analysis)
++        for update in analysis.get('actions', []):
++            values = {u['price'] for u in update.get('tp_updates', [])}
++            if update.get('kind') == 'UPDATE_TP' and len(values) == 1 and common_target(executor.store, message, update, next(iter(values))):
++                update['tp_updates'] = [{'target_number':n,'price':next(iter(values))} for n in (1,2,3)]
+     actions=analysis.get('actions',[])
+     if len(actions)!=1 or actions[0].get('kind')!='NEW_ENTRY':return analysis
+     action=actions[0];side=now_side(message['text'])
+@@ -91,13 +98,18 @@
+     rows=[r for r in executor._rows(message['profile'],str(message['channel_id']))
+           if r['kind']=='NEW_ENTRY' and r['message_id']==ids[0] and r['request'].get('_instant_now')]
+     if not rows:return analysis
+-    if action.get('symbol') not in {'XAUUSD','GOLD'} or len(action.get('tp_prices',[]))!=3:
+-        out=copy.deepcopy(analysis);out['decision']='REVIEW';out['missing_information'].append('Dan completion requires exactly three explicit TP levels.');return out
++    prices = action.get('tp_prices', [])
++    if action.get('symbol') not in {'XAUUSD','GOLD'} or len(prices) not in (0, 1, 3):
++        out=copy.deepcopy(analysis);out['decision']='REVIEW';out['missing_information'].append('Dan completion requires one common TP or three explicit targets.');return out
+     out=copy.deepcopy(analysis);base=copy.deepcopy(action)
+     base.update(entry_prices=[],entry_mode=None,order_type=None,target_entry_prices=[],tp_prices=[],tp_open=False)
+-    sl=copy.deepcopy(base);sl.update(kind='UPDATE_SL',tp_updates=[])
+-    tp=copy.deepcopy(base);tp.update(kind='UPDATE_TP',sl_price=None,tp_updates=[{'target_number':i+1,'price':price} for i,price in enumerate(action['tp_prices'])])
+-    out.update(actions=[sl,tp],summary='Parâmetros vinculados às ordens provisórias existentes; atualizar SL/TP sem nova entrada.')
++    updates=[]
++    if action.get('sl_price') is not None:
++        sl=copy.deepcopy(base);sl.update(kind='UPDATE_SL',tp_updates=[]);updates.append(sl)
++    if prices:
++        if len(prices)==1: prices=prices*3
++        tp=copy.deepcopy(base);tp.update(kind='UPDATE_TP',sl_price=None,tp_updates=[{'target_number':i+1,'price':price} for i,price in enumerate(prices)]);updates.append(tp)
++    out.update(actions=updates,summary='Parâmetros vinculados às ordens provisórias existentes; atualizar SL/TP sem nova entrada.')
+     initialize_links(executor.store)
+     with executor.store._lock,executor.store.connection:
+         executor.store.connection.execute('INSERT OR IGNORE INTO idea_links VALUES (?,?,?,?)',(message['profile'],str(message['channel_id']),message['message_id'],ids[0]))
+--- a/k4signals/lifecycle.py
++++ b/k4signals/lifecycle.py
+@@ -29,6 +29,8 @@
+ 
+ def reconcile(executor,store,profile,channel):
+     try:
++        from .now_pending import monitor
++        monitor(executor,store,profile,channel)
+         from .recovery import monitor_recovered
+         monitor_recovered(executor,store,profile,channel)
+         positions=executor.context(profile,channel) # Verified login/server, magic, journal IDs.
+--- /dev/null
++++ b/k4signals/now_pending.py
+@@ -0,0 +1,116 @@
++"""Scoped Dan NOW fallback and journal-backed pending retirement."""
++from datetime import datetime, timezone
++import re
++
++
++def eligible(executor, message, action):
++    from .instant import now_side, policy
++    from .policies import stage_source
++    if (message.get('source') not in {'live', 'edit'} or not policy(executor.config, message['profile'])
++        or action.get('kind') != 'NEW_ENTRY' or action.get('symbol') != 'XAUUSD'
++        or action.get('order_type') != 'MARKET' or action.get('timing') != 'NOW'
++        or action.get('condition') or action.get('entry_mode') != 'SINGLE'):
++        return False
++    origin = stage_source(executor.store, message, action) if action.get('target_message_ids') else message
++    return bool(origin and now_side(origin['text']) == action.get('side'))
++
++
++def parameter_sources(store, message, original):
++    """Only literal parameter-only followups within an unbroken NOW sequence.
++
++    A new entry, unrelated reply, changed parameter or ambiguous text ends the
++    chain. Values remain separated by field; a TP cannot authorize a stop.
++    """
++    if message.get('profile') != 'dan_golden':
++        return {}
++    rows = store.recent(message['profile'], str(message['channel_id']), before_id=message['message_id'], limit=200)
++    rows = sorted((r for r in rows if r['message_id'] > original['message_id']), key=lambda r:r['message_id'])
++    values = {}
++    for row in rows:
++        if row.get('reply_to_id') not in (None, original['message_id']):
++            return {}
++        versions = store.revisions(message['profile'], str(message['channel_id']), row['message_id'])
++        if not versions or versions[0]['source'] != 'live' or any(v['text'].strip() != row['text'].strip() for v in versions):
++            return {}
++        match = re.fullmatch(r'\s*(SL|TP)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*', row['text'], re.I)
++        if not match:
++            return {}
++        age = (datetime.fromisoformat(row['date']) - datetime.fromisoformat(original['date'])).total_seconds()
++        if not 0 <= age <= 300:
++            return {}
++        field = 'sl_price' if match[1].upper() == 'SL' else 'tp_prices'
++        value = float(match[2].replace(',', '.'))
++        if field in values and values[field]['value'] != value:
++            return {}
++        values[field] = {'value': value, 'message_id': row['message_id']}
++    return values
++
++
++def monitor(executor, store, profile, channel):
++    """Cancel only tagged fallback pending tickets; never close filled positions.
++
++    Uses verified fresh quotes and persists a retirement decision across restart.
++    Runs while the application monitors the account; it is not a broker OCO.
++    """
++    if profile != 'dan_golden' or executor.mode not in {'LIVE', 'DEMO'}:
++        return
++    from .execution import _CONNECTION_LOCK
++    if not any(r['status'] == 'PENDING' and r['request'].get('_now_pending_expires_at') for r in executor._rows(profile, str(channel))):
++        return
++    with _CONNECTION_LOCK:
++        settings = executor._settings(profile)
++        executor._connect(profile, settings)
++        _, orders = executor._reconcile(profile, str(channel), settings)
++        rows = [r for r in executor._rows(profile, str(channel)) if r['kind'] == 'NEW_ENTRY'
++                and r['status'] == 'PENDING' and r['request'].get('_now_pending_expires_at')]
++        with store._lock, store.connection:
++            store.connection.execute('CREATE TABLE IF NOT EXISTS now_pending_retirement(action_key TEXT PRIMARY KEY, reason TEXT NOT NULL)')
++        groups = {}
++        for row in rows:
++            groups.setdefault(row['idea_message_id'] or row['message_id'], []).append(row)
++        for root, members in groups.items():
++            active = [(r, o) for r in members for o in orders if r['order_ticket'] == int(o.ticket)
++                      and o.magic == settings['magic'] and o.symbol == r['request']['symbol']]
++            if not active:
++                continue
++            tick = executor._tick(active[0][1].symbol, settings)
++            buying = active[0][1].type in (2, 4)
++            closing = float(tick.bid if buying else tick.ask)
++            hit = any(float(o.tp or 0) and (closing >= o.tp if buying else closing <= o.tp) for _, o in active)
++            for row, order in active:
++                expired = datetime.now(timezone.utc) >= datetime.fromisoformat(row['request']['_now_pending_expires_at'])
++                with store._lock, store.connection:
++                    if hit or expired:
++                        store.connection.execute('INSERT OR IGNORE INTO now_pending_retirement VALUES (?,?)',
++                                                 (row['action_key'], 'TP_BEFORE_ENTRY' if hit else 'EXPIRED'))
++                    reason = store.connection.execute('SELECT reason FROM now_pending_retirement WHERE action_key=?', (row['action_key'],)).fetchone()
++                if not reason:
++                    continue
++                message = dict(profile=profile, channel_id=str(channel), message_id=row['message_id'], revision=1,
++                               source='live', date=datetime.now(timezone.utc).isoformat(), text='Local NOW pending retirement')
++                request = dict(action=8, order=int(order.ticket), magic=settings['magic'], _source_symbol=order.symbol)
++                from .audit import record
++                record(store, 'NOW_PENDING_RETIREMENT', dict(profile=profile, channel_id=str(channel), ticket=int(order.ticket), reason=reason[0], source_message_id=root))
++                executor._send(message, 900, int(order.ticket), 'CANCEL_PENDING', request, settings)
++
++
++def common_target(store, message, action, price):
++    """A literal unnumbered TP applies to the three allocated NOW legs."""
++    from .instant import now_side
++    from .policies import stage_source
++    import json
++    ids = action.get('target_message_ids') or []
++    literal = re.fullmatch(r'\s*TP\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*', message.get('text', ''), re.I)
++    if message.get('profile') != 'dan_golden' or len(ids) != 1 or not literal or float(literal[1].replace(',', '.')) != price:
++        return False
++    original = store.get(message['profile'], str(message['channel_id']), ids[0])
++    if not original or not now_side(original['text']):
++        return False
++    if not stage_source(store, message, dict(action, side=now_side(original['text']))):
++        return False
++    with store._lock:
++        if not store.connection.execute("SELECT 1 FROM sqlite_master WHERE name='execution_journal'").fetchone():
++            return False
++        rows = store.connection.execute("SELECT request FROM execution_journal WHERE profile=? AND channel_id=? AND message_id=? AND kind='NEW_ENTRY'", (message['profile'], str(message['channel_id']), ids[0])).fetchall()
++    requests = [json.loads(r[0]) for r in rows]
++    return bool(requests) and all(r.get('_instant_now') is True for r in requests)
+--- a/k4signals/operation_log.py
++++ b/k4signals/operation_log.py
+@@ -83,7 +83,7 @@
+     fields = ('enabled', 'login', 'server', 'terminal_path', 'magic', 'symbol_map',
+               'enforce_total_risk_limit', 'allow_explicit_sl_widening', 'sl_policy_revision', 'risk_policy_revision', 'max_total_risk_percent',
+               'lot_per_target', 'max_positions', 'unlimited_pending_orders', 'quantity_policy_revision', 'max_spread_points', 'max_lot_per_order',
+-              'max_entry_deviation_points', 'max_tick_age_seconds', 'zone_policy', 'recover_pending_history')
++              'now_entry_tolerance_price', 'now_pending_fallback_enabled', 'now_pending_validity_seconds', 'max_entry_deviation_points', 'max_tick_age_seconds', 'zone_policy', 'recover_pending_history')
+     profiles = {}
+     for name, value in config.get('profiles', {}).items():
+         settings = value.get('execution', {})
+--- /dev/null
++++ b/tests/test_now_pending.py
+@@ -0,0 +1,79 @@
++import copy
++import json
++import unittest
++from datetime import datetime, timezone, timedelta
++import test_instant
++from test_execution import entry, proposal
++from k4signals.grounding import check_action_numbers
++from k4signals.now_pending import monitor
++from k4signals.execution import MT5Executor
++
++class NowPendingTests(unittest.TestCase):
++ def setUp(self):
++  self.f=test_instant.InstantTests();self.f.setUp();self.addCleanup(self.f.doCleanups)
++  self.f.config['profiles']['dan_golden']['execution']['enforce_total_risk_limit']=False
++  from types import SimpleNamespace
++  original=self.f.m.order_send
++  def send(req):
++   if req['action']==7:
++    self.f.m.sent.append(dict(req));o=next(o for o in self.f.m.orders if o.ticket==req['order']);o.sl,o.tp=req['sl'],req['tp']
++    return SimpleNamespace(retcode=10009,order=o.ticket,deal=0,volume=0,price=o.price_open)
++   return original(req)
++  self.f.m.order_send=send
++ def command(self, level=3995, side='BUY'):
++  f=self.f
++  f.payload=proposal(entry(side=side,entry_prices=[level],sl_price=None,tp_prices=[]))
++  return f.ingest(1,f'{side} now {level}')
++ def test_tolerance_three_market(self):
++  r=self.command(3997.5);self.assertEqual(len(self.f.m.positions),3,r)
++ def test_fallback_three_limits_and_no_duplicate(self):
++  r=self.command();self.assertEqual(len(self.f.m.orders),3,r)
++  self.assertEqual({o.price_open for o in self.f.m.orders},{3995})
++  self.assertEqual({o.sl for o in self.f.m.orders},{3983})
++  before=len(self.f.m.sent);self.f.ingest(1,'BUY now 3995','edit',self.f.now.isoformat())
++  self.assertEqual(len(self.f.m.sent),before)
++ def test_sell_fallback(self):
++  r=self.command(4005,'SELL');self.assertEqual(len(self.f.m.orders),3,r)
++  self.assertEqual({o.type for o in self.f.m.orders},{3})
++ def test_favourable_move_does_not_create_stop(self):
++  r=self.command(4005);self.assertEqual(len(self.f.m.sent),0,r)
++ def test_separate_sl_tp_update_same_pending(self):
++  self.command();f=self.f
++  f.payload=proposal(entry(entry_prices=[3995],sl_price=3984,tp_prices=[],tp_open=True,target_message_ids=[1]))
++  r=f.ingest(2,'SL 3984');self.assertEqual({o.sl for o in f.m.orders},{3984},r)
++  f.payload=proposal(entry(entry_prices=[3995],sl_price=3984,tp_prices=[4010],target_message_ids=[1]))
++  r=f.ingest(3,'TP 4010');self.assertEqual({o.tp for o in f.m.orders},{4010},r)
++  self.assertEqual(sum(r['action']==5 for r in f.m.sent),3)
++ def test_parameter_source_does_not_cross_another_signal(self):
++  self.command();f=self.f
++  f.store.upsert(f.msg(2,'SELL NOW 4010'),source='live')
++  f.store.upsert(f.msg(3,'SL 3984'),source='live')
++  a=proposal(entry(entry_prices=[3995],sl_price=3984,tp_prices=[4010],target_message_ids=[1]))
++  result=check_action_numbers(f.msg(4,'TP 4010').to_dict(),a,f.store)
++  self.assertEqual(result['decision'],'REVIEW')
++ def test_monitor_tp_after_restart_cancels_only_pending(self):
++  self.test_separate_sl_tp_update_same_pending();f=self.f
++  f.m.tick.bid=4010;f.m.tick.ask=4010.2
++  e=MT5Executor(f.config,f.store,f.m)
++  monitor(e,f.store,'dan_golden','-1001')
++  self.assertEqual(len(f.m.orders),0)
++  before=len(f.m.sent);monitor(e,f.store,'dan_golden','-1001');self.assertEqual(len(f.m.sent),before)
++ def test_expiry_cancels(self):
++  self.command();f=self.f
++  for row in f.e._rows('dan_golden','-1001'):
++   req=dict(row['request'],_now_pending_expires_at=(datetime.now(timezone.utc)-timedelta(seconds=1)).isoformat())
++   with f.store.connection:f.store.connection.execute('UPDATE execution_journal SET request=? WHERE action_key=?',(json.dumps(req),row['action_key']))
++  monitor(f.e,f.store,'dan_golden','-1001');self.assertEqual(len(f.m.orders),0)
++ def test_unreached_pending_stays(self):
++  self.command();f=self.f;before=len(f.m.sent)
++  monitor(f.e,f.store,'dan_golden','-1001');self.assertEqual(len(f.m.sent),before)
++
++ def test_common_target_management_updates_all_legs(self):
++  self.command();f=self.f
++  f.payload=proposal(entry(kind='UPDATE_TP',entry_prices=[],sl_price=None,tp_prices=[],target_message_ids=[1],tp_updates=[{'target_number':1,'price':4010}]))
++  r=f.ingest(2,'TP 4010');self.assertEqual({o.tp for o in f.m.orders},{4010},r)
++ def test_reached_target_prevents_fallback(self):
++  f=self.f;f.store.upsert(f.msg(1,'BUY NOW 3995'),source='live')
++  a=entry(entry_prices=[3995],sl_price=3983,tp_prices=[3998],target_message_ids=[1])
++  msg=f.base.msg(2,profile='dan_golden',text='SL 3983 TP 3998')
++  r=f.e.execute(msg,proposal(a));self.assertEqual(len(f.m.sent),0,r)
