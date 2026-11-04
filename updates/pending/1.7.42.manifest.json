@@ -1,0 +1,11 @@
+{
+  "manifest": {
+    "product": "K4Signals",
+    "channel": "stable",
+    "version": "1.7.42",
+    "min_version": "1.3.4",
+    "package_path": "updates/packages/1.7.42.zip.b64",
+    "size": 459562,
+    "sha256": "733c76a9bd37a76a62954541a92846c58570bdad9d0026b4fa4d129ac49ec307"
+  }
+}
