@@ -1,7 +1,3 @@
-# K4Telegram2MT5 — atualizações automáticas
+# K4Telegram2MT5
 
-Versão estável: **0.4.31**.
-
-Tolerância para zonas XAUUSD/GOLD: até 1,00 unidade de preço, com avanço desfavorável máximo de 25% do caminho da borda da zona até TP1. Confere preço executável, spread, SL e TP1 antes de cada ordem. Inclui correção BE da v0.4.30. 430 testes e 6 subtestes aprovados. Atualização assinada preserva configurações, sessões e banco de dados. Não reabre sinais expirados.
-
-Feed exclusivo do K4Telegram2MT5. K4 Signals usa `updates/`.
+Versão estável 0.4.32. Após recusa 10016, o pedido de BE fica persistido por ticket e é reavaliado conforme cotação e distâncias mínimas do broker. 433 testes e 6 subtestes aprovados.
