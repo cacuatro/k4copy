@@ -1,0 +1,1050 @@
+diff --git a/APLICAR_FIX.bat b/APLICAR_FIX.bat
+index 1903234..d753c48 100644
+--- a/APLICAR_FIX.bat
++++ b/APLICAR_FIX.bat
+@@ -1,6 +1,6 @@
+ @echo off
+ setlocal
+-title Atualizar K4 Signals - FIX 1.7.51
++title Atualizar K4 Signals - FIX 1.7.52
+ powershell.exe -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File "%~dp0aplicar_fix.ps1"
+ set "K4_FIX_EXIT=%errorlevel%"
+ if not "%K4_FIX_EXIT%"=="0" (
+diff --git a/LEIA_PRIMEIRO.txt b/LEIA_PRIMEIRO.txt
+index 7dab805..f028983 100644
+--- a/LEIA_PRIMEIRO.txt
++++ b/LEIA_PRIMEIRO.txt
+@@ -1,3 +1,7 @@
+-﻿K4 Signals 1.7.51
+-
+-Recuperação das versões atuais de sinais completos editados do Dan, com auditoria desde a publicação original, mensagens posteriores e conferência de execução.
++﻿K4 Signals 1.7.52 — Dan Golden do Telegram
++
++Na aba Dan Golden, a opção Gestão após execução do TP1 vem em “BE + simular estrutura”. Com o acompanhamento DEMO ou LIVE ativo, o programa confirma o TP1 no MT5 e protege as ordens abertas dos alvos seguintes do mesmo sinal. O BE usa o preço individual de entrada e a estimativa de custos da posição.
++
++Na simulação, o K4 registra o stop estrutural proposto e os toques de preço observados. Em “BE + aplicar estrutura”, a perna do TP2 acompanha pivôs confirmados no M5. Depois que o preço executável alcança o TP2, a perna do TP3 protege o nível do TP1 e acompanha o M15. A folga inicial é de um tick. Também estão disponíveis “Somente BE” e “Desligada”.
++
++Para aplicar manualmente à instalação existente, pare o acompanhamento, feche o painel do K4, extraia o ZIP e execute APLICAR_FIX.bat. Depois abra o K4 e confira a versão no título. A gestão funciona durante “Iniciar acompanhamento” e verifica a corretora a cada ciclo de conciliação. Histórico incompleto ou cotação antiga podem adiar um ajuste. Os eventos DAN_GESTAO_TP, DAN_TRAILING_SIMULADO e DAN_SAIDA_SIMULADA ficam no diagnóstico.
+diff --git a/aplicar_fix.ps1 b/aplicar_fix.ps1
+index e22952d..d1b6302 100644
+--- a/aplicar_fix.ps1
++++ b/aplicar_fix.ps1
+@@ -236,7 +236,7 @@ function Invoke-K4Fix([string]$Root) {
+ }
+ 
+ $Form = New-Object System.Windows.Forms.Form
+-$Form.Text = 'Atualizar K4 Signals - FIX 1.7.51'
++$Form.Text = 'Atualizar K4 Signals - FIX 1.7.52'
+ $Form.Size = New-Object System.Drawing.Size(750, 555)
+ $Form.StartPosition = 'CenterScreen'
+ $Form.FormBorderStyle = 'FixedDialog'
+diff --git a/app/APLICAR_FIX.bat b/app/APLICAR_FIX.bat
+index 6ae728f..d753c48 100644
+--- a/app/APLICAR_FIX.bat
++++ b/app/APLICAR_FIX.bat
+@@ -1,6 +1,6 @@
+ @echo off
+ setlocal
+-title Atualizar K4 Signals - FIX 1.7.17
++title Atualizar K4 Signals - FIX 1.7.52
+ powershell.exe -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File "%~dp0aplicar_fix.ps1"
+ set "K4_FIX_EXIT=%errorlevel%"
+ if not "%K4_FIX_EXIT%"=="0" (
+diff --git a/app/LEIA_PRIMEIRO.txt b/app/LEIA_PRIMEIRO.txt
+index 361f318..f028983 100644
+--- a/app/LEIA_PRIMEIRO.txt
++++ b/app/LEIA_PRIMEIRO.txt
+@@ -1,2 +1,7 @@
+-K4 1.7.40 — exceção única autorizada para recolocar até 22 pendentes Dan do incidente 16335.
+-Ao iniciar acompanhamento LIVE na conta 52030082 / RoboForex-Pro, verifica os tickets locais, cancelamento no broker e condições atuais LIMIT. Preserva parâmetros originais e vínculo de gestão. Não relê a validade estratégica por ticks históricos. Não inclui 4004. Uma tentativa por instalação/banco; bloqueios ou interrupções não são repetidos automaticamente. Resultados: INCIDENT_RESTORE_RESULT. Não use simultaneamente com o fix manual. Testes simulados; sem execução real no desenvolvimento.
++﻿K4 Signals 1.7.52 — Dan Golden do Telegram
++
++Na aba Dan Golden, a opção Gestão após execução do TP1 vem em “BE + simular estrutura”. Com o acompanhamento DEMO ou LIVE ativo, o programa confirma o TP1 no MT5 e protege as ordens abertas dos alvos seguintes do mesmo sinal. O BE usa o preço individual de entrada e a estimativa de custos da posição.
++
++Na simulação, o K4 registra o stop estrutural proposto e os toques de preço observados. Em “BE + aplicar estrutura”, a perna do TP2 acompanha pivôs confirmados no M5. Depois que o preço executável alcança o TP2, a perna do TP3 protege o nível do TP1 e acompanha o M15. A folga inicial é de um tick. Também estão disponíveis “Somente BE” e “Desligada”.
++
++Para aplicar manualmente à instalação existente, pare o acompanhamento, feche o painel do K4, extraia o ZIP e execute APLICAR_FIX.bat. Depois abra o K4 e confira a versão no título. A gestão funciona durante “Iniciar acompanhamento” e verifica a corretora a cada ciclo de conciliação. Histórico incompleto ou cotação antiga podem adiar um ajuste. Os eventos DAN_GESTAO_TP, DAN_TRAILING_SIMULADO e DAN_SAIDA_SIMULADA ficam no diagnóstico.
+diff --git a/app/README.md b/app/README.md
+index 087c6cb..03eaf0f 100644
+--- a/app/README.md
++++ b/app/README.md
+@@ -363,3 +363,12 @@ Sure e Dan: TP1 observado pela cotação fresca ou relato literal de alvo atingi
+ 
+ ## 1.7.41
+ BE explícito independente de parcial sem quantidade, com vínculo por resposta e todas as validações restantes preservadas. Parcial fica sem execução e registrada para revisão. Corrige preço seguido de ponto final em SL to 3880. Não altera lotes nem reaplica mensagens antigas.
++
++
++## 1.7.52 — Gestão do Dan Golden após o TP1
++
++Na aba Dan Golden, a opção Gestão após execução do TP1 vem em “BE + simular estrutura”. Com o acompanhamento DEMO ou LIVE ativo, o programa confirma o TP1 no MT5 e protege as ordens abertas dos alvos seguintes do mesmo sinal. O BE usa o preço individual de entrada e a estimativa de custos da posição.
++
++Na simulação, o K4 registra o stop estrutural proposto e os toques de preço observados. Em “BE + aplicar estrutura”, a perna do TP2 acompanha pivôs confirmados no M5. Depois que o preço executável alcança o TP2, a perna do TP3 protege o nível do TP1 e acompanha o M15. A folga inicial é de um tick. Também estão disponíveis “Somente BE” e “Desligada”.
++
++Para aplicar manualmente à instalação existente, pare o acompanhamento, feche o painel do K4, extraia o ZIP e execute APLICAR_FIX.bat. Depois abra o K4 e confira a versão no título. A gestão funciona durante “Iniciar acompanhamento” e verifica a corretora a cada ciclo de conciliação. Histórico incompleto ou cotação antiga podem adiar um ajuste. Os eventos DAN_GESTAO_TP, DAN_TRAILING_SIMULADO e DAN_SAIDA_SIMULADA ficam no diagnóstico.
+diff --git a/app/aplicar_fix.ps1 b/app/aplicar_fix.ps1
+index 5f55c77..1079c60 100644
+--- a/app/aplicar_fix.ps1
++++ b/app/aplicar_fix.ps1
+@@ -236,7 +236,7 @@ function Invoke-K4Fix([string]$Root) {
+ }
+ 
+ $Form = New-Object System.Windows.Forms.Form
+-$Form.Text = 'Atualizar K4 Signals - FIX 1.7.40'
++$Form.Text = 'Atualizar K4 Signals - FIX 1.7.52'
+ $Form.Size = New-Object System.Drawing.Size(750, 555)
+ $Form.StartPosition = 'CenterScreen'
+ $Form.FormBorderStyle = 'FixedDialog'
+diff --git a/app/k4signals/__init__.py b/app/k4signals/__init__.py
+index 223469a..e543a67 100644
+--- a/app/k4signals/__init__.py
++++ b/app/k4signals/__init__.py
+@@ -1,2 +1,2 @@
+ """K4 Signals: contextual Telegram signals with explicit MT5 account routing."""
+-__version__ = '1.7.51'
++__version__ = '1.7.52'
+diff --git a/app/k4signals/configuration.py b/app/k4signals/configuration.py
+index 1213c0a..b6b9f73 100644
+--- a/app/k4signals/configuration.py
++++ b/app/k4signals/configuration.py
+@@ -108,6 +108,11 @@ def validate_config(config, require_execution=False):
+             number(execution.get(key), name + '.' + key, maximum=maximum,
+                    allow_zero=key == 'max_entry_deviation_points')
+         if name == 'dan_golden':
++            from .dan_protection import MODES as DAN_MODES
++            if execution.get('dan_tp_management', DAN_MODES[0]) not in DAN_MODES:
++                raise ValueError('Modo de gestão do Dan inválido.')
++            number(execution.get('dan_structure_buffer_ticks',1), name+'.dan_structure_buffer_ticks', integer=True)
++            number(execution.get('be_offset_points',0), name+'.be_offset_points', allow_zero=True)
+             number(execution.get('now_entry_tolerance_price', 3.0), name + '.now_entry_tolerance_price')
+             number(execution.get('now_pending_validity_seconds', 86400), name + '.now_pending_validity_seconds')
+             if type(execution.get('now_pending_fallback_enabled', True)) is not bool:
+diff --git a/app/k4signals/dan_protection.py b/app/k4signals/dan_protection.py
+new file mode 100644
+index 0000000..b8b06de
+--- /dev/null
++++ b/app/k4signals/dan_protection.py
+@@ -0,0 +1,392 @@
++"""Protection of broker-confirmed, journal-linked Dan Golden positions."""
++from collections import defaultdict
++from datetime import datetime, timezone
++import json
++import math
++import time
++import uuid
++
++from .audit import record
++from .dan_structure import market_structure, on_grid
++from .execution import ReviewRequired, _CONNECTION_LOCK
++from .tp_management import target_number
++
++
++PROFILE = 'dan_golden'
++MODES = ('BE + simular estrutura', 'Somente BE', 'BE + aplicar estrutura', 'Desligada')
++ACTION_INDEX = 9159
++
++
++def enabled_mode(settings):
++    mode = settings.get('dan_tp_management', MODES[0])
++    return mode if mode in MODES else 'Desligada'
++
++
++def _tables(store):
++    with store._lock, store.connection:
++        store.connection.executescript('''
++            CREATE TABLE IF NOT EXISTS dan_tp_state (
++                identity TEXT PRIMARY KEY, profile TEXT, channel_id TEXT, message_id INTEGER,
++                payload TEXT NOT NULL DEFAULT '{}', lease TEXT, lease_until REAL NOT NULL DEFAULT 0);
++            CREATE TABLE IF NOT EXISTS dan_tp_guards (
++                account_login INTEGER, account_server TEXT, magic INTEGER, symbol TEXT, position_id INTEGER,
++                PRIMARY KEY(account_login,account_server,magic,symbol,position_id));
++        ''')
++
++
++def guarded(store, settings, symbol, pid):
++    if enabled_mode(settings) == 'Desligada':
++        return False
++    with store._lock:
++        if not store.connection.execute("SELECT 1 FROM sqlite_master WHERE name='dan_tp_guards'").fetchone():
++            return False
++        return bool(store.connection.execute('SELECT 1 FROM dan_tp_guards WHERE account_login=? AND account_server=? AND magic=? AND symbol=? AND position_id=?',
++            (settings['login'], settings['server'], settings['magic'], symbol, pid)).fetchone())
++
++
++def _guard(store, settings, symbol, pid):
++    with store._lock, store.connection:
++        store.connection.execute('INSERT OR IGNORE INTO dan_tp_guards VALUES(?,?,?,?,?)',
++            (settings['login'], settings['server'], settings['magic'], symbol, pid))
++
++
++def _acquire(store, key, channel, root, now):
++    token = uuid.uuid4().hex
++    with store._lock, store.connection:
++        store.connection.execute('INSERT OR IGNORE INTO dan_tp_state(identity,profile,channel_id,message_id) VALUES(?,?,?,?)',
++                                 (key, PROFILE, str(channel), root))
++        if not store.connection.execute('UPDATE dan_tp_state SET lease=?,lease_until=? WHERE identity=? AND lease_until<=?',
++                                       (token, now+120, key, now)).rowcount:
++            return None, None
++        payload = store.connection.execute('SELECT payload FROM dan_tp_state WHERE identity=?', (key,)).fetchone()[0]
++    return token, json.loads(payload)
++
++
++def _save(store, key, token, state, release=False):
++    with store._lock, store.connection:
++        return bool(store.connection.execute('UPDATE dan_tp_state SET payload=?,lease=?,lease_until=? WHERE identity=? AND lease=?',
++            (json.dumps(state, allow_nan=False), None if release else token, 0 if release else time.time()+120, key, token)).rowcount)
++
++
++def _cost(item):
++    return sum(max(0., -float(item.get(k) or 0)) for k in ('commission', 'fee'))
++
++
++def _breakeven(ex, settings, position, info, leg, exit_rate, now, side):
++    pid = int(getattr(position, 'identifier', 0) or position.ticket)
++    if 'entry_fee_rate' not in leg and now >= leg.get('fee_retry', 0):
++        leg['fee_retry'] = now + 60
++        try:
++            history = ex.mt5.history_deals_get(position=pid)
++            entries = [d for d in (history or ()) if d.position_id == pid and d.symbol == position.symbol
++                       and d.entry == getattr(ex.mt5, 'DEAL_ENTRY_IN', 0) and d.magic in (0, settings['magic'])]
++            volume = sum(float(d.volume) for d in entries)
++            if volume > 0:
++                leg['entry_fee_rate'] = sum(_cost({k:getattr(d,k,0) for k in ('commission','fee')}) for d in entries)/volume
++        except (AttributeError, TypeError, ValueError, RuntimeError, OSError):
++            pass
++    step = float(getattr(info, 'trade_tick_size', 0) or info.point)
++    distance = float(settings.get('be_offset_points', 0)) * float(info.point)
++    fee = (leg.get('entry_fee_rate', 0) + exit_rate) * position.volume + max(0., -float(getattr(position, 'swap', 0) or 0))
++    if fee > 0:
++        tick_profit = float(getattr(info, 'trade_tick_value_profit', 0) or 0) * position.volume
++        if tick_profit <= 0:
++            try:
++                tick_profit = float(ex.mt5.order_calc_profit(position.type, position.symbol, position.volume,
++                    position.price_open, position.price_open + side * step) or 0)
++            except (AttributeError, TypeError, ValueError, RuntimeError, OSError):
++                tick_profit = 0.
++        if tick_profit > 0:
++            distance = max(distance, fee * step / tick_profit)
++    return on_grid(position.price_open + side * distance, step, side == 1)
++
++
++def _effective_tp(row, pos, exits, revisions):
++    req = row['request']
++    original = float(req.get('tp') or 0)
++    pid, ticket = row['position_id'], row['order_ticket']
++    updated = None
++    for edit in revisions:
++        change = edit['request']
++        if change.get('symbol') != req.get('symbol'):
++            continue
++        if ((pid and change.get('_managed_position_id') == pid)
++                or (pos is not None and change.get('position') == pos.ticket)
++                or (ticket and change.get('order') == ticket)):
++            updated = float(change.get('tp') or 0)
++    observed = float(pos.tp or 0) if pos is not None else next((float(d['tp']) for d in reversed(exits) if d.get('tp')), 0.)
++    if updated is not None:
++        return observed or updated
++    if req.get('_provisional_tp_distance'):
++        return observed if observed and not math.isclose(observed, original, rel_tol=0, abs_tol=1e-8) else 0.
++    return observed or original
++
++
++def _milestones(ex, state, members, positions, revisions, now):
++    target2 = []
++    first_deals = []
++    second_deals = []
++    for row, n in members:
++        if n not in (1, 2):
++            continue
++        closing = row['result'].get('closing_deals', [])
++        target = _effective_tp(row, positions.get(row['position_id']), closing, revisions)
++        if n == 2 and target > 0:
++            target2.append(target)
++        if row['status'] != 'CLOSED' or not row['position_id'] or target <= 0:
++            continue
++        for d in closing:
++            if d.get('reason') != getattr(ex.mt5, 'DEAL_REASON_TP', 5) or float(d.get('volume') or 0) <= 0:
++                continue
++            stamp = float(d.get('time_msc') or 0)/1000 or float(d.get('time') or 0)
++            # Old installs may lack a reliable deal timestamp. Start at observation in that case.
++            created = datetime.fromisoformat(row['created_at']).timestamp()
++            when = stamp if created-5 <= stamp <= now else now
++            (first_deals if n == 1 else second_deals).append((when, int(d.get('ticket') or 0), target, d))
++    if first_deals and 'tp1_at' not in state:
++        when, _, target, _ = min(first_deals, key=lambda d: (d[0], d[1]))
++        state.update(tp1_at=when, tp1=target)
++    if first_deals:
++        volume = sum(float(d['volume']) for _, _, _, d in first_deals)
++        state['exit_fee_rate'] = sum(_cost(d) for _, _, _, d in first_deals)/volume
++    if 'tp1_at' in state:
++        for when, _, _, _ in second_deals:
++            if when >= state['tp1_at']:
++                state['tp2_at'] = min(when, state.get('tp2_at', when))
++    # Multiple entries can have different targets. Only an unambiguous TP2 quote
++    # can activate the runner; its actual broker exit remains sufficient.
++    unique = set(target2)
++    return unique.pop() if len(unique) == 1 else None
++
++
++def _levels(state, number, side, be, step, padding):
++    levels = [be]
++    if number == 3 and 'tp2_at' in state:
++        floor = on_grid(state['tp1'], step, side == 1)
++        if side * (floor - be) > 0:
++            levels.append(floor)
++    label = 'M5' if number == 2 else 'M15' if number == 3 and 'tp2_at' in state else ''
++    pivot = state.get(label, {}).get('best')
++    if pivot is not None:
++        candidate = on_grid(side * (pivot - padding * step), step, side == -1)
++        if side * (candidate - levels[-1]) > 0:
++            levels.append(candidate)
++    return levels
++
++
++def _position(ex, settings, pid, symbol, side):
++    positions = ex.mt5.positions_get()
++    if positions is None:
++        return None
++    bound = [p for p in positions if int(getattr(p,'identifier',0) or p.ticket) == pid and p.symbol == symbol
++             and p.magic == settings['magic'] and p.type == (0 if side == 1 else 1)]
++    return bound[0] if len(bound) == 1 else None
++
++
++def _paper_exit(ex,channel,root,paper,pid,n,side,quote,stamp):
++    if 'sl' not in paper or stamp <= paper['set_at'] or side*(quote-paper['sl']) > 0:
++        return False
++    paper.update(exit_at=stamp, exit_quote=quote)
++    record(ex.store,'DAN_SAIDA_SIMULADA',dict(profile=PROFILE,channel_id=str(channel),message_id=root,
++           position_id=pid,target=n,simulated_sl=paper['sl'],observed_quote=quote))
++    return True
++
++
++def _paper_history(ex,settings,channel,root,state,active,side,symbol,info,until):
++    """Check the previous virtual stops before installing tighter simulated levels."""
++    from .history_clock import bridge, tick_stamp
++    watched = [(pid,n,leg['simulation']) for pid,n in active.items()
++               if (leg := state.get('positions',{}).get(str(pid),{})).get('simulation',{}).get('sl')
++               and 'exit_at' not in leg['simulation']]
++    if not watched or not hasattr(ex.mt5,'copy_ticks_range'):
++        return
++    start = min(max(p['set_at'],p.get('through',0)) for _,_,p in watched)
++    end = min(until,start+900)
++    if start >= end:
++        return
++    clock = bridge(ex,symbol,settings,float(info.point))
++    if clock.get('status') != 'VERIFIED':
++        return
++    offset = clock['tick_offset_seconds']
++    start_date = datetime.fromtimestamp(math.floor(start+offset),timezone.utc)
++    end_date = datetime.fromtimestamp(math.floor(end+offset)+1,timezone.utc)
++    ticks = ex.mt5.copy_ticks_range(symbol,start_date,end_date,getattr(ex.mt5,'COPY_TICKS_ALL',-1))
++    if ticks is None:
++        return
++    for item in ticks:
++        stamp = tick_stamp(item)-offset
++        bid,ask = float(item['bid']),float(item['ask'])
++        if not start <= stamp <= end or not 0 < bid <= ask or not math.isfinite(ask):
++            continue
++        for pid,n,paper in watched:
++            if 'exit_at' not in paper and stamp > paper.get('through',0):
++                _paper_exit(ex,channel,root,paper,pid,n,side,bid if side==1 else ask,stamp)
++    for _,_,paper in watched:
++        paper['through'] = max(end,paper.get('through',0))
++        paper['catching_up'] = end < until
++
++
++def _shadow(ex, channel, root, leg, position, pid, n, side, quote, stamp, distance, levels):
++    paper = leg.setdefault('simulation', {})
++    if 'exit_at' in paper or paper.get('catching_up'):
++        return
++    if _paper_exit(ex,channel,root,paper,pid,n,side,quote,stamp):
++        return
++    for candidate in reversed(levels):
++        if side*(quote-candidate) <= distance:
++            continue
++        if 'sl' not in paper or side*(candidate-paper['sl']) > 0:
++            paper.update(sl=candidate,set_at=stamp)
++            record(ex.store,'DAN_TRAILING_SIMULADO',dict(profile=PROFILE,channel_id=str(channel),message_id=root,
++                   position_id=pid,target=n,simulated_sl=candidate,actual_sl=position.sl,tp=position.tp))
++        break
++
++
++def _manage(ex, settings, root, channel, position, n, info, tick, state, mode, save, now):
++    pid = int(getattr(position, 'identifier', 0) or position.ticket)
++    side = 1 if position.type == 0 else -1
++    step = float(getattr(info, 'trade_tick_size', 0) or info.point)
++    leg = state.setdefault('positions', {}).setdefault(str(pid), {})
++    be = _breakeven(ex, settings, position, info, leg, state.get('exit_fee_rate', 0), now, side)
++    levels = _levels(state, n, side, be, step, settings.get('dan_structure_buffer_ticks', 1))
++    quote = float(tick.bid if side == 1 else tick.ask)
++    distance = max(info.trade_stops_level, info.trade_freeze_level) * float(info.point)
++    if mode == MODES[0]:
++        stamp = float(getattr(tick,'time_msc',0) or 0)/1000 or float(tick.time)
++        _shadow(ex,channel,root,leg,position,pid,n,side,quote,stamp,distance,levels)
++    candidates = levels if mode == MODES[2] else [be]
++    tolerance = step * .001
++    if not leg.get('guarded') and position.sl and side * (position.sl - be) >= -tolerance:
++        _guard(ex.store, settings, position.symbol, pid)
++        leg['guarded'] = True
++    if now < leg.get('retry_at', 0):
++        return
++    for sl in reversed(candidates):
++        if position.sl and side * (sl - position.sl) <= tolerance:
++            return
++        if side * (quote - sl) > distance:
++            break
++    else:
++        return
++    # Rechecking the exact position is authoritative even after a lost response.
++    attempt = leg.get('attempt', 0) + 1
++    leg['attempt'] = attempt
++    failures = min(leg.get('failures', 0) + 1, 6)
++    leg.update(failures=failures, retry_at=now + min(60, 2**failures))
++    if not save():
++        return
++    msg = dict(profile=PROFILE, channel_id=str(channel), message_id=root, revision=attempt, source='live',
++               date=datetime.now(timezone.utc).isoformat(), text='Gestão local do DAN após execução do TP1')
++    request = dict(action=getattr(ex.mt5,'TRADE_ACTION_SLTP',6), symbol=position.symbol,
++                   position=int(position.ticket), magic=settings['magic'], sl=sl, tp=float(position.tp),
++                   _source_identifier=pid, _dan_auto_stop=True)
++    outcome = ex._send(msg, ACTION_INDEX, pid, 'UPDATE_SL', request, settings, idea=root)
++    fresh = _position(ex, settings, pid, position.symbol, side)
++    confirmed = fresh is not None and fresh.sl and side*(fresh.sl-sl) >= -tolerance
++    if confirmed:
++        leg.update(failures=0, retry_at=0)
++        _guard(ex.store, settings, position.symbol, pid)
++        leg['guarded'] = True
++    status = 'SL_CONFIRMADO' if confirmed else outcome['status'] + '_AGUARDA_CONFERENCIA'
++    event = [status, sl, outcome.get('retcode')]
++    if event != leg.get('last_event'):
++        leg['last_event'] = event
++        record(ex.store, 'DAN_GESTAO_TP', dict(profile=PROFILE, channel_id=str(channel), message_id=root,
++               position_id=pid, target=n, sl=sl, status=status, retcode=outcome.get('retcode')))
++    return bool(confirmed)
++
++
++def monitor(ex, profile, channel, rows, held):
++    if profile != PROFILE or ex.mode not in ('LIVE', 'DEMO') or not any(p.get('status') == 'POSITION' for p in held):
++        return
++    settings = ex._settings(profile)
++    mode = enabled_mode(settings)
++    if mode == 'Desligada':
++        return
++    symbol = settings.get('symbol_map', {}).get('XAUUSD')
++    active_roots = {mid for position in held if position.get('status') == 'POSITION' and position.get('symbol') == symbol
++                    for mid in position.get('source_message_ids', ())}
++    groups = defaultdict(list)
++    owners = defaultdict(set)
++    for row in rows:
++        req = row['request']
++        if row['kind'] not in ('NEW_ENTRY','ADD_ENTRY') or req.get('symbol') != symbol or req.get('magic') != settings['magic']:
++            continue
++        root = row['idea_message_id'] or row['message_id']
++        if root not in active_roots:
++            continue
++        side = 1 if req['type'] in (0,2,4) else -1
++        try:
++            n = target_number(ex, row)
++        except ReviewRequired:
++            if row['position_id']:
++                owners[row['position_id']].add((root,side,None))
++            continue
++        groups[root,side].append((row,n))
++        if row['position_id']:
++            owners[row['position_id']].add((root,side,n))
++    if not groups:
++        return
++    _tables(ex.store)
++    changed = False
++    with _CONNECTION_LOCK:
++        ex._connect(profile, settings)
++        try:
++            inventory, _ = ex._inventory()
++            positions = {int(getattr(p,'identifier',0) or p.ticket):p for p in inventory
++                         if p.symbol == symbol and p.magic == settings['magic']}
++            revisions = [r for r in rows if r['kind'] == 'UPDATE_TP' and r['status'] == 'CONFIRMED']
++            for (root, side), members in groups.items():
++                members = [(r,n) for r,n in members if len(owners[r['position_id']]) <= 1]
++                active = {r['position_id']:n for r,n in members if n >= 2 and r['position_id'] in positions
++                          and positions[r['position_id']].type == (0 if side == 1 else 1)}
++                if not active:
++                    continue
++                now = time.time()
++                key = json.dumps([profile, str(channel), settings['login'], settings['server'], settings['magic'], root, symbol, side])
++                token, state = _acquire(ex.store, key, channel, root, now)
++                if not token:
++                    continue
++                try:
++                    target2 = _milestones(ex, state, members, positions, revisions, now)
++                    if 'tp1_at' not in state:
++                        continue
++                    info, tick = ex.mt5.symbol_info(symbol), ex._tick(symbol, settings)
++                    if info is None:
++                        continue
++                    def save():
++                        return _save(ex.store, key, token, state)
++                    # Give the mandatory BE priority over historical tick and candle queries.
++                    for pid, n in list(active.items()):
++                        try:
++                            if _manage(ex, settings, root, channel, positions[pid], n, info, tick, state, 'Somente BE', save, now):
++                                changed = True
++                                fresh = _position(ex, settings, pid, symbol, side)
++                                if fresh is None:
++                                    del active[pid]
++                                else:
++                                    positions[pid] = fresh
++                        except ReviewRequired as error:
++                            state.setdefault('positions',{}).setdefault(str(pid),{})['last_review'] = str(error)
++                    if mode == 'Somente BE':
++                        continue
++                    if target2 is not None and side*(target2-state['tp1']) <= 0:
++                        target2 = None
++                    try:
++                        market_structure(ex, settings, symbol, side, tick, now, state, target2)
++                        if mode == MODES[0]:
++                            _paper_history(ex,settings,channel,root,state,active,side,symbol,info,
++                                           float(getattr(tick,'time_msc',0) or 0)/1000 or float(tick.time))
++                    except (RuntimeError, OSError, AttributeError, KeyError, ValueError, TypeError) as error:
++                        state['market_data_error'] = type(error).__name__
++                    for pid, n in active.items():
++                        try:
++                            if _manage(ex, settings, root, channel, positions[pid], n, info, tick, state, mode, save, now):
++                                changed = True
++                        except ReviewRequired as error:
++                            state.setdefault('positions',{}).setdefault(str(pid),{})['last_review'] = str(error)
++                finally:
++                    _save(ex.store, key, token, state, release=True)
++        finally:
++            ex.mt5.shutdown()
++    return changed
+diff --git a/app/k4signals/dan_structure.py b/app/k4signals/dan_structure.py
+new file mode 100644
+index 0000000..3461be3
+--- /dev/null
++++ b/app/k4signals/dan_structure.py
+@@ -0,0 +1,97 @@
++"""Price structure for the Telegram Dan Golden manager. Only closed bars form pivots."""
++from datetime import datetime, timezone
++from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
++import math
++
++
++def on_grid(price, step, up):
++    unit = Decimal(str(step))
++    return float((Decimal(str(price)) / unit).to_integral_value(
++        rounding=ROUND_CEILING if up else ROUND_FLOOR) * unit)
++
++
++def closed_bars(state, bars, seconds, start, now, side, offset=0):
++    for bar in bars:
++        stamp = int(bar['time']) - offset
++        previous = state.get('time', 0)
++        if stamp < start or stamp + seconds > now or stamp <= previous:
++            continue
++        high, low, close = (float(bar[k]) for k in ('high', 'low', 'close'))
++        if not all(math.isfinite(p) and p > 0 for p in (high, low, close)) or not low <= close <= high:
++            continue
++        if previous and stamp != previous + seconds:
++            for key in ('previous', 'last', 'pivot', 'pullback'):
++                state.pop(key, None)
++        high, low = (high, low) if side == 1 else (-low, -high)
++        if 'pivot' in state:
++            state['pullback'] = min(low, state['pullback'])
++            if side * close > state['pivot']:
++                found = state.pop('pullback')
++                state['best'] = max(found, state.get('best', found))
++                del state['pivot']
++        elif state.get('previous') is not None and state['last'] > max(state['previous'], high):
++            state['pivot'], state['pullback'] = state['last'], low
++        state['previous'], state['last'], state['time'] = state.get('last'), high, stamp
++
++
++def market_structure(executor, settings, symbol, side, tick, now, state, target2):
++    """Live Bid/Ask plus exact historical ticks; establish the bar clock from the current bar."""
++    from .history_clock import bridge, tick_stamp
++    api = executor.mt5
++    quote_time = float(getattr(tick, 'time_msc', 0) or 0) / 1000 or float(tick.time)
++    until = min(now, quote_time)
++    def reached(bid, ask):
++        return math.isfinite(bid) and math.isfinite(ask) and 0 < bid <= ask and (
++            bid >= target2 if side == 1 else ask <= target2)
++    if target2 and until >= state['tp1_at'] and reached(float(tick.bid), float(tick.ask)):
++        state.setdefault('tp2_at', until)
++    if target2 and now >= state.get('tick_retry', 0) and hasattr(api, 'copy_ticks_range'):
++        start = max(state['tp1_at'], state.get('ticks_until', state['tp1_at']))
++        end = min(until, state.get('tp2_at', until), start + 900)
++        if end > start:
++            metadata = api.symbol_info(symbol)
++            proof = bridge(executor, symbol, settings, float(metadata.point))
++            if proof.get('status') == 'VERIFIED':
++                offset = proof['tick_offset_seconds']
++                t0 = datetime.fromtimestamp(math.floor(start + offset), timezone.utc)
++                t1 = datetime.fromtimestamp(math.floor(end + offset) + 1, timezone.utc)
++                ticks = api.copy_ticks_range(symbol, t0, t1, getattr(api, 'COPY_TICKS_ALL', -1))
++                if ticks is not None:
++                    for item in ticks:
++                        ts = tick_stamp(item) - offset
++                        if start <= ts <= end and reached(float(item['bid']), float(item['ask'])):
++                            if ts < state.get('tp2_at', float('inf')):
++                                state['tp2_at'] = ts
++                                # Rebuild from the earlier verified touch while preserving protection already earned.
++                                old = state.get('M15', {})
++                                state['M15'] = {'best': old['best']} if 'best' in old else {}
++                            break
++                    state['ticks_until'] = end
++            state['tick_retry'] = now + 5
++    if not hasattr(api, 'copy_rates_from_pos'):
++        return
++    clock = getattr(executor, '_quote_clock', None)
++    key = (settings['login'], settings['server'], settings['terminal_path'], symbol)
++    live_offset = (getattr(clock, 'last', {}).get(key) or {}).get('offset_seconds', 0)
++    for minutes, stage in ((5, 'tp1_at'), (15, 'tp2_at')):
++        if stage not in state:
++            continue
++        label, period = 'M' + str(minutes), minutes * 60
++        data = state.setdefault(label, {})
++        anchor = max(state['tp1_at'], state[stage])
++        bucket = int(until // period) * period
++        if bucket - period < anchor or data.get('time', 0) >= bucket - period or now < data.get('retry', 0):
++            continue
++        since = max(anchor, data.get('time', 0))
++        count = max(3, min(20000, math.ceil((until - since) / period) + 2))
++        bars = api.copy_rates_from_pos(symbol, getattr(api, 'TIMEFRAME_' + label, minutes), 0, count)
++        if bars is None or not len(bars):
++            data['retry'] = now + 20
++            continue
++        # Offset of the tick archive and offset of the candle archive can differ.
++        offsets = {int(o) for o in (0, live_offset) if int(bars[-1]['time']) - o == bucket}
++        if len(offsets) != 1:
++            data['retry'] = now + 20
++            continue
++        closed_bars(data, bars, period, anchor, until, side, offsets.pop())
++        data['retry'] = min(bucket + period, now + 20) if data.get('time', 0) < bucket-period else bucket + period
+diff --git a/app/k4signals/desktop.py b/app/k4signals/desktop.py
+index d3a7e71..785c2ab 100644
+--- a/app/k4signals/desktop.py
++++ b/app/k4signals/desktop.py
+@@ -338,7 +338,7 @@ class Desktop:
+         self.export_busy = False
+         self.closing = False
+         self.variables, self.editable, self.selectors, self.account_status = {}, [], {}, {}
+-        root.title('K4 Signals 1.7.51 — Telegram → MT5')
++        root.title('K4 Signals 1.7.52 — Telegram → MT5')
+         root.geometry('970x760')
+         root.minsize(880, 690)
+         root.protocol('WM_DELETE_WINDOW', self.close)
+@@ -419,7 +419,7 @@ class Desktop:
+             self.update_enabled.set(json.loads(preference.read_text()).get('enabled', True) is True)
+         except (OSError, ValueError):
+             pass
+-        self.update_status = self.tk.StringVar(value='Atualizador GitHub — versão 1.7.51')
++        self.update_status = self.tk.StringVar(value='Atualizador GitHub — versão 1.7.52')
+         def changed():
+             _atomic_write(preference, json.dumps({'enabled': self.update_enabled.get()}).encode())
+         self.ttk.Checkbutton(frame, text='Atualizações automáticas', variable=self.update_enabled,
+@@ -624,6 +624,17 @@ class Desktop:
+         self._check(tab,26,name+'_enforce_total_risk_limit','Bloquear entradas acima do risco percentual configurado',ex.get('enforce_total_risk_limit',True))
+         self._check(tab,27,name+'_unlimited_pending_orders','Pendentes sem limite interno de quantidade',ex.get('unlimited_pending_orders',False))
+         self.ttk.Label(tab,text='Com esta opção, o limite numérico controla novas entradas a mercado. Pendentes já enviadas podem ativar na corretora e ultrapassar esse número de posições.',wraplength=780).grid(row=28,column=0,columnspan=3,sticky='w')
++        if name == 'dan_golden':
++            from .dan_protection import MODES, enabled_mode
++            self.ttk.Label(tab,text='Gestão após execução do TP1').grid(row=29,column=0,sticky='w')
++            management = self.tk.StringVar(value=enabled_mode(ex))
++            self.variables[name+'_dan_tp_management'] = management
++            selector = self.ttk.Combobox(tab,textvariable=management,values=MODES,state='readonly')
++            selector.grid(row=29,column=1,sticky='ew')
++            self.editable.append((selector,'readonly'))
++            self._field(tab,30,name+'_dan_structure_buffer_ticks','Folga do pivô M5/M15 (ticks)',ex.get('dan_structure_buffer_ticks',1))
++            self._field(tab,31,name+'_be_offset_points','Compensação mínima do BE (pontos MT5)',ex.get('be_offset_points',0))
++            self.ttk.Label(tab,text='A simulação registra o stop estrutural proposto. Em DEMO ou LIVE, o BE é aplicado no MT5.',wraplength=780).grid(row=32,columnspan=3,sticky='w')
+ 
+     def _build_operation(self, tab):
+         controls = self.ttk.Frame(tab)
+diff --git a/app/k4signals/execution.py b/app/k4signals/execution.py
+index e907970..5603abf 100644
+--- a/app/k4signals/execution.py
++++ b/app/k4signals/execution.py
+@@ -311,7 +311,7 @@ class MT5Executor:
+                 evidence=dict(row['result'],history_lookup=history_lookup)
+                 if closed:
+                     exits=[d for d in linked_deals if getattr(d,'entry',None) in {getattr(self.mt5,'DEAL_ENTRY_OUT',1),getattr(self.mt5,'DEAL_ENTRY_OUT_BY',3)}]
+-                    evidence['closing_deals']=[{'ticket':int(d.ticket),'volume':float(d.volume),'price':getattr(d,'price',None),'profit':getattr(d,'profit',None),'commission':getattr(d,'commission',None),'swap':getattr(d,'swap',None),'reason':getattr(d,'reason',None),'time':getattr(d,'time',None)} for d in exits]
++                    evidence['closing_deals']=[{'ticket':int(d.ticket),'volume':float(d.volume),'price':getattr(d,'price',None),'tp':getattr(d,'tp',None),'profit':getattr(d,'profit',None),'commission':getattr(d,'commission',None),'fee':getattr(d,'fee',None),'swap':getattr(d,'swap',None),'reason':getattr(d,'reason',None),'time':getattr(d,'time',None),'time_msc':getattr(d,'time_msc',None)} for d in exits]
+                 self._update(row['action_key'], status, evidence, position_id=pid)
+             else:
+                 # A definitive unfilled cancellation can be released. A partial
+@@ -1008,8 +1008,11 @@ class MT5Executor:
+                     request['sl'] = self._grid(float(pos.price_open) + (1 if buying else -1) * float(settings.get('be_plus_offset_points') if request.get('_be_plus') else settings.get('be_offset_points', 0)) * point,
+                                                float(getattr(info, 'trade_tick_size', 0) or point), 'SL')
+                 sl, current = request['sl'], float(pos.sl or 0)
+-                if (kind!='UPDATE_SL' or settings.get('allow_explicit_sl_widening') is not True) and current and ((buying and sl < current-point/2) or (not buying and sl > current+point/2)):
+-                    raise ReviewRequired('The broker stop improved after planning; refusing to loosen it')
++                if current and ((buying and sl < current-point/2) or (not buying and sl > current+point/2)):
++                    from .dan_protection import guarded
++                    if (kind != 'UPDATE_SL' or request.get('_dan_auto_stop') or settings.get('allow_explicit_sl_widening') is not True
++                            or guarded(self.store, settings, pos.symbol, request['_source_identifier'])):
++                        raise ReviewRequired('The broker stop improved after planning; refusing to loosen it')
+                 distance = max(int(getattr(info, 'trade_stops_level', 0)), int(getattr(info, 'trade_freeze_level', 0))) * point
+                 if (buying and sl >= tick.bid-distance) or (not buying and sl <= tick.ask+distance):
+                     raise ReviewRequired('The stop is no longer valid at the current quote')
+@@ -1103,7 +1106,13 @@ class MT5Executor:
+                 if kind!='CANCEL_PENDING' or not check(self,message,request['_pending_cancel_link'],request.get('order')):
+                     raise ReviewRequired('Vínculo do cancelamento mudou antes do envio.')
+             cancel_evidence = request.get('_cancel_evidence')
++            managed_id = request.get('_source_identifier') if 'position' in request else None
++            dan_stop = request.get('_dan_auto_stop')
+             request = self._management_now(request, settings, kind)
++            if managed_id and kind in {'UPDATE_TP','UPDATE_SL','MOVE_SL_TO_BE'}:
++                request['_managed_position_id'] = managed_id
++            if dan_stop:
++                request['_dan_auto_stop'] = True
+             if cancel_evidence is not None:
+                 request['_cancel_evidence'] = cancel_evidence
+         self._trace('VALIDAÇÕES IMEDIATAS CONCLUÍDAS', request=request)
+diff --git a/app/k4signals/export_diagnostics.py b/app/k4signals/export_diagnostics.py
+index 9bc9759..6d1ae41 100644
+--- a/app/k4signals/export_diagnostics.py
++++ b/app/k4signals/export_diagnostics.py
+@@ -8,6 +8,10 @@ TABLES=('messages','message_versions','decisions','execution_journal','broker_sn
+ EXEC_FIELDS=('enforce_total_risk_limit','allow_explicit_sl_widening', 'sl_policy_revision', 'risk_policy_revision','enabled','terminal_path','login','server','symbol_map','magic','lot_per_target','max_total_risk_percent','max_spread_points','max_entry_deviation_points','max_positions','unlimited_pending_orders','quantity_policy_revision','max_lot_per_order','provisional_tp_distance_price','provisional_tp_policy_revision','partial_fraction','be_offset_points','be_plus_offset_points','zone_policy','tp_count','allow_runner','instant_now_enabled','recover_pending_history','pending_default_sl_enabled','zone_policy_revision')
+ 
+ 
++TABLES += ('dan_tp_state',)
++EXEC_FIELDS += ('dan_tp_management', 'dan_structure_buffer_ticks')
++
++
+ class ExportCancelled(Exception):
+     pass
+ 
+@@ -181,7 +185,7 @@ def export_bundle(base,config_path,destination,redactor=lambda text:text,progres
+                                 if scope and scope.get(key) is not None and key in columns:
+                                     where.append(key+'=?');args.append(scope[key])
+                             if scope and scope.get('message_id') is None:
+-                                stamp=next((k for k in ('created_at','observed_at','checked_at','date') if k in columns),None)
++                                stamp='date' if table=='messages' else next((k for k in ('created_at','observed_at','checked_at','date') if k in columns),None)
+                                 if stamp:
+                                     for key,op in (('start','>='),('end','<=')):
+                                         if scope.get(key):where.append('julianday('+stamp+')'+op+'julianday(?)');args.append(scope[key])
+diff --git a/app/k4signals/lifecycle.py b/app/k4signals/lifecycle.py
+index 5761067..1f61b7a 100644
+--- a/app/k4signals/lifecycle.py
++++ b/app/k4signals/lifecycle.py
+@@ -1,4 +1,4 @@
+-"""Periodic broker reconciliation without order submission or model calls."""
++"""Reconcile broker state and run the configured local trade monitors."""
+ from datetime import datetime,timezone
+ import json
+ import sqlite3
+@@ -38,7 +38,13 @@ def reconcile(executor,store,profile,channel):
+         from .recovery import monitor_recovered
+         monitor_recovered(executor,store,profile,channel)
+         positions=executor.context(profile,channel) # Verified login/server, magic, journal IDs.
+-        entries=[r for r in executor._rows(profile,channel) if r['kind'] in {'NEW_ENTRY','ADD_ENTRY'}]
++        rows=executor._rows(profile,channel)
++        if profile == 'dan_golden' and any(p.get('status') == 'POSITION' for p in positions):
++            from .dan_protection import monitor as monitor_dan
++            if monitor_dan(executor,profile,channel,rows,positions):
++                positions=executor.context(profile,channel)
++                rows=executor._rows(profile,channel)
++        entries=[r for r in rows if r['kind'] in {'NEW_ENTRY','ADD_ENTRY'}]
+         # Active/uncertain rows always retained; keep a bounded recent closed history.
+         active=[r for r in entries if r['status'] not in {'CLOSED','CANCELLED','REJECTED'}]
+         closed=[r for r in entries if r['status'] in {'CLOSED','CANCELLED','REJECTED'}][-200:]
+diff --git a/app/k4signals/windows_setup.py b/app/k4signals/windows_setup.py
+index 60702b2..08e9c40 100644
+--- a/app/k4signals/windows_setup.py
++++ b/app/k4signals/windows_setup.py
+@@ -180,6 +180,15 @@ def merge_config(current, values):
+         if name+'_recover_pending_history' in values:execution['recover_pending_history']=bool(values[name+'_recover_pending_history'])
+         if name=='dan_golden' and name+'_instant_now_enabled' in values:execution['instant_now_enabled']=bool(values[name+'_instant_now_enabled'])
+         if name=='dan_golden' and name+'_pending_default_sl_enabled' in values:execution['pending_default_sl_enabled']=bool(values[name+'_pending_default_sl_enabled'])
++        if name == 'dan_golden':
++            from .dan_protection import MODES as DAN_MODES
++            management = values.get(name+'_dan_tp_management', execution.get('dan_tp_management', DAN_MODES[0]))
++            if management not in DAN_MODES:
++                raise ValueError('Modo de gestão do Dan inválido.')
++            execution['dan_tp_management'] = management
++            execution['dan_structure_buffer_ticks'] = _number(values.get(name+'_dan_structure_buffer_ticks', execution.get('dan_structure_buffer_ticks',1)),label+' — folga estrutural',integer=True)
++            offset = _number(values.get(name+'_be_offset_points', execution.get('be_offset_points',0)),label+' — compensação do BE',strict=False)
++            execution['be_offset_points'] = offset
+         trading = mode in ('DEMO', 'LIVE') and profile['enabled']
+         if trading:
+             if not execution['enabled']:
+diff --git a/app/profiles.example.json b/app/profiles.example.json
+index b2e3746..6edaf68 100644
+--- a/app/profiles.example.json
++++ b/app/profiles.example.json
+@@ -71,6 +71,8 @@
+         "tp_count": null,
+         "allow_runner": false,
+         "zone_policy": "LIMIT_EDGES",
++        "dan_tp_management": "BE + simular estrutura",
++        "dan_structure_buffer_ticks": 1,
+         "be_plus_offset_points": null,
+         "recover_pending_history": true,
+         "zone_policy_revision": 2
+diff --git a/app/tests/test_dan_structural_management.py b/app/tests/test_dan_structural_management.py
+new file mode 100644
+index 0000000..2dbae8d
+--- /dev/null
++++ b/app/tests/test_dan_structural_management.py
+@@ -0,0 +1,260 @@
++import json
++import time
++import unittest
++from datetime import datetime, timezone
++from types import SimpleNamespace as N
++from unittest.mock import patch
++
++import test_execution as fixtures
++from k4signals import lifecycle
++from k4signals.dan_protection import MODES, _shadow
++from k4signals.dan_structure import closed_bars
++from k4signals.execution import MT5Executor
++
++
++def series(start, period, sell=False):
++    prices = [(4006,4004,4005),(4009,4005,4008),(4007,4005.5,4006),
++              (4010,4006,4008),(4011,4006.5,4010)]
++    if sell:
++        prices = [(8000-lo,8000-hi,8000-close) for hi,lo,close in prices]
++    return [dict(time=start+i*period, high=hi, low=lo, close=close) for i,(hi,lo,close) in enumerate(prices)]
++
++
++class StructureTest(unittest.TestCase):
++    def test_wick_open_bar_long_and_short(self):
++        for side in (1,-1):
++            bars = series(900,300,side==-1)
++            state = {}
++            closed_bars(state,bars,300,900,2399,side)
++            self.assertNotIn('best',state)
++            closed_bars(state,bars,300,900,2400,side)
++            self.assertEqual(state['best'],4005.5 if side==1 else -3994.5)
++
++    def test_gap_and_preactivation(self):
++        bars = series(900,300)
++        for data, start in ((bars[0:3]+bars[4:],900),(bars,901)):
++            result={}
++            closed_bars(result,data,300,start,2600,1)
++            self.assertNotIn('best',result)
++
++
++class DanManagement(unittest.TestCase):
++    def setUp(self):
++        self.f = fixtures.ExecutionTests('test_shadow_never_connects')
++        self.f.setUp()
++        self.addCleanup(self.f.tearDown)
++        self.f.config['profiles']['dan_golden'] = self.f.config['profiles'].pop('sure_shot')
++        self.settings=self.f.config['profiles']['dan_golden']['execution']
++        self.settings.update(max_total_risk_percent=20,max_positions=60)
++        self.mt=self.f.mt5
++        self.next_deal=80000
++
++    def trade(self, sell=False, mid=1):
++        a=fixtures.entry(tp_prices=[4005.,4010.,4020. if mid==1 else 4030.])
++        if sell:
++            a.update(side='SELL',sl_price=4010.,tp_prices=[3995.,3990.,3980.])
++        result=self.f.run_action(a,mid=mid,profile='dan_golden')
++        self.assertEqual(result['status'],'DEMO')
++        return list(self.mt.positions[-3:])
++
++    def close(self,pos,reason=5,stamp=None):
++        self.mt.positions.remove(pos)
++        self.next_deal+=1
++        self.mt.deals.append(N(ticket=self.next_deal,order=self.next_deal+1000,position_id=pos.identifier,
++                               entry=1,magic=0,symbol=pos.symbol,volume=pos.volume,reason=reason,
++                               price=pos.tp,profit=1.,tp=pos.tp,commission=0.,time=stamp or time.time()))
++
++    def quote(self,bid,ask=None):
++        self.mt.tick=N(bid=bid,ask=bid+.02 if ask is None else ask,time=time.time(),time_msc=int(time.time()*1000))
++
++    def run_monitor(self):
++        result=lifecycle.reconcile(self.f.executor,self.f.store,'dan_golden','-1001')
++        self.assertEqual(result['status'],'OK',result)
++        return result
++
++    def state(self):
++        return json.loads(self.f.store.connection.execute('SELECT payload FROM dan_tp_state ORDER BY message_id LIMIT 1').fetchone()[0])
++
++    def test_broker_tp1_individual_be_other_signal_untouched_and_restart(self):
++        first,second,third=self.trade()
++        third.price_open+=.24
++        other=self.trade(mid=12)
++        self.quote(4007)
++        self.close(first)
++        self.run_monitor()
++        self.assertEqual((second.sl,third.sl),(second.price_open,third.price_open))
++        self.assertEqual((second.tp,third.tp),(4010,4020))
++        self.assertTrue(all(p.sl==3990 for p in other))
++        count=len(self.mt.sent)
++        self.f.executor=MT5Executor(self.f.config,self.f.store,self.mt)
++        self.run_monitor()
++        self.assertEqual(len(self.mt.sent),count)
++
++    def test_quote_and_telegram_report_do_not_prove_tp1(self):
++        from k4signals.memory import Message
++        first,second,third=self.trade()
++        self.f.store.upsert(Message('dan_golden','-1001',9,datetime.now(timezone.utc).isoformat(),'TP1 HIT',reply_to_id=1),source='live')
++        self.quote(4011)
++        self.run_monitor()
++        self.assertEqual(second.sl,3990.)
++        self.close(first,reason=4)
++        self.run_monitor()
++        self.assertEqual(third.sl,3990.)
++
++    def test_rejected_stop_rechecked_after_restart(self):
++        first,second,third=self.trade()
++        self.close(first);self.quote(4007);self.mt.response='reject';self.run_monitor()
++        count=len(self.mt.sent);self.run_monitor()
++        self.assertEqual(len(self.mt.sent),count)
++        self.mt.response='normal'
++        with self.f.store.connection:
++            s=self.state()
++            for leg in s['positions'].values():leg['retry_at']=0
++            self.f.store.connection.execute('UPDATE dan_tp_state SET payload=?',(json.dumps(s),))
++        self.f.executor=MT5Executor(self.f.config,self.f.store,self.mt)
++        self.run_monitor()
++        self.assertEqual((second.sl,third.sl),(4000.,4000.))
++
++    def test_tp2_by_ask_sell_and_never_loosen(self):
++        self.settings['dan_tp_management']=MODES[2]
++        first,second,third=self.trade(True)
++        self.close(first);self.quote(3989.98,3990.01);self.run_monitor()
++        self.assertEqual(third.sl,third.price_open)
++        self.quote(3989.9,3990.);self.run_monitor()
++        self.assertEqual(third.sl,3995.)
++        third.sl=3993.
++        self.run_monitor()
++        self.assertEqual(third.sl,3993.)
++
++    def test_demo_simulates_pivot_but_only_applies_be_to_broker(self):
++        first,second,third=self.trade()
++        floor=int(time.time()//300)*300
++        with self.f.store.connection:
++            self.f.store.connection.execute('UPDATE execution_journal SET created_at=?',
++                    (datetime.fromtimestamp(floor-3600,timezone.utc).isoformat(),))
++        self.close(first,stamp=floor-1800);self.quote(4012)
++        m5=series(floor-1500,300)+[dict(time=floor,high=9999,low=3999,close=9999)]
++        self.mt.copy_rates_from_pos=lambda sym,tf,start,count:m5 if tf==5 else []
++        self.run_monitor()
++        self.assertEqual((second.sl,third.sl),(4000.,4000.))
++        self.assertEqual(self.state()['positions'][str(second.identifier)]['simulation']['sl'],4005.49)
++        self.settings['dan_tp_management']=MODES[2]
++        self.run_monitor()
++        self.assertEqual((second.sl,third.sl),(4005.49,4005.))
++
++    def test_closed_tp2_moves_runner_and_manual_better_stop_stays(self):
++        self.settings['dan_tp_management']=MODES[2]
++        first,second,third=self.trade()
++        self.close(first,stamp=time.time()-.1)
++        self.close(second);self.quote(4009.)
++        self.run_monitor()
++        self.assertEqual(third.sl,4005.)
++        self.settings['allow_explicit_sl_widening']=True
++        req=dict(action=6,symbol=third.symbol,position=third.ticket,_source_identifier=third.identifier,sl=3990,tp=third.tp)
++        from k4signals.execution import ReviewRequired
++        with self.assertRaises(ReviewRequired):
++            self.f.executor._management_now(req,self.settings,'UPDATE_SL')
++
++    def test_provisional_tp_does_not_trigger(self):
++        first,second,third=self.trade()
++        with self.f.store.connection:
++            self.f.store.connection.execute("UPDATE execution_journal SET request=json_set(request,'$._provisional_tp_distance',5)")
++        self.close(first);self.quote(4007);self.run_monitor()
++        self.assertEqual((second.sl,third.sl),(3990.,3990.))
++
++    def test_partial_cost_and_stop_distance(self):
++        first,second,third=self.trade()
++        self.mt.info.trade_tick_value_profit=1
++        for d in self.mt.deals:d.commission=-.03
++        self.close(first);self.mt.deals[-1].commission=-.02
++        self.quote(4000.06);self.run_monitor()
++        self.assertEqual(second.sl,3990.)
++        self.quote(4006);self.run_monitor()
++        self.assertAlmostEqual(second.sl,4000.05)
++
++    def test_off_and_shadow_modes(self):
++        first,second,third=self.trade()
++        self.close(first);self.quote(4012);self.settings['dan_tp_management']='Desligada'
++        self.run_monitor()
++        self.assertEqual(second.sl,3990.)
++        self.f.config['mode']='SHADOW_ONLY'
++        self.settings['dan_tp_management']=MODES[2]
++        from k4signals.dan_protection import monitor
++        monitor(self.f.executor,'dan_golden','-1001',[],[{'status':'POSITION'}])
++        self.assertEqual(len(self.mt.sent),3)
++
++    def test_missing_price_history_does_not_block_be(self):
++        first,second,third=self.trade()
++        self.mt.copy_rates_from_pos=lambda *args:None
++        self.mt.copy_ticks_range=lambda *args:None
++        self.close(first); self.quote(4012); self.run_monitor()
++        self.assertEqual(third.sl,4000.)
++
++    def test_paper_exit_once_and_no_broker_send(self):
++        first,second,third=self.trade()
++        leg={}
++        with patch('k4signals.dan_protection.record') as log:
++            for stamp,quote in [(1,4012),(2,4005),(3,4004)]:
++                _shadow(self.f.executor,'-1001',1,leg,second,second.identifier,2,1,quote,stamp,.1,[4000,4006])
++        self.assertEqual(leg['simulation']['exit_quote'],4005)
++        self.assertEqual(log.call_count,2)
++        self.assertEqual(len(self.mt.sent),3)
++
++    def test_m15_lock_and_continuation_after_tp2(self):
++        self.settings['dan_tp_management']=MODES[2]
++        first,second,third=self.trade()
++        floor=int(time.time()//900)*900
++        with self.f.store.connection:
++            self.f.store.connection.execute('UPDATE execution_journal SET created_at=?',(datetime.fromtimestamp(floor-7200,timezone.utc).isoformat(),))
++        self.close(first,stamp=floor-6500);self.close(second,stamp=floor-5000)
++        self.quote(4018.)
++        candles=series(floor-4500,900)
++        for candle in candles:
++            for field in ('low','high','close'):candle[field]+=6.
++        self.mt.copy_rates_from_pos=lambda sym,tf,start,count: (candles+[dict(time=floor,high=4020,low=4017,close=4018)]) if tf==15 else []
++        self.run_monitor()
++        self.assertEqual(third.sl,4011.49)
++        self.assertEqual(third.tp,4020)
++
++    def test_tp2_touch_between_polls_after_second_closed_by_sl(self):
++        self.settings['dan_tp_management']=MODES[2]
++        first,second,third=self.trade()
++        ts=time.time()
++        with self.f.store.connection:
++            self.f.store.connection.execute('UPDATE execution_journal SET created_at=?',(datetime.fromtimestamp(ts-60,timezone.utc).isoformat(),))
++        self.close(first,stamp=ts-25);self.close(second,reason=4,stamp=ts-15)
++        self.quote(4008.)
++        self.mt.copy_ticks_range=lambda *args:[dict(time_msc=int((ts-10)*1000),bid=4010.,ask=4010.02)]
++        self.run_monitor()
++        self.assertEqual(third.sl,4005.)
++
++    def test_effective_targets_when_dan_edits_provisional_now(self):
++        first,second,third=self.trade()
++        with self.f.store.connection:
++            self.f.store.connection.execute("UPDATE execution_journal SET request=json_set(request,'$._provisional_tp_distance',25,'$.tp',4025)")
++        # The broker history confirms the definitive TP on the deal, although the original entry was temporary.
++        self.close(first);self.quote(4007);self.run_monitor()
++        self.assertEqual((second.sl,third.sl),(4000.,4000.))
++
++    def test_runner_uses_last_broker_target_after_tp2_leg_stops(self):
++        self.settings['dan_tp_management']=MODES[2]
++        first,second,third=self.trade()
++        self.close(first)
++        second.tp=4014.
++        self.close(second,reason=4)
++        self.quote(4011.);self.run_monitor()
++        self.assertEqual(third.sl,4000.)
++        self.quote(4014.);self.run_monitor()
++        self.assertEqual(third.sl,4005.)
++
++    def test_controls_round_trip(self):
++        from k4signals.windows_setup import merge_config
++        data={'mode':'SHADOW_ONLY','sure_shot_enabled':False,'sure_shot_peer':'',
++              'dan_golden_enabled':True,'dan_golden_peer':'-1001','dan_golden_dan_tp_management':MODES[2],
++              'dan_golden_dan_structure_buffer_ticks':'3','dan_golden_be_offset_points':'2,5'}
++        cfg=merge_config({},data)
++        dan=cfg['profiles']['dan_golden']['execution']
++        self.assertEqual((dan['dan_tp_management'],dan['dan_structure_buffer_ticks'],dan['be_offset_points']),(MODES[2],3,2.5))
++        self.assertNotIn('dan_tp_management',cfg['profiles']['sure_shot']['execution'])
++        with self.assertRaises(ValueError):
++            merge_config({},dict(data,dan_golden_dan_structure_buffer_ticks='0'))
